@@ -38,7 +38,9 @@ export default function Login(props) {
           password: password
         }
       });
-      if (result.code === 0) {
+
+      // 处理云函数返回结果
+      if (result && result.code === 0 && result.data) {
         return {
           success: true,
           user: {
@@ -51,7 +53,7 @@ export default function Login(props) {
       } else {
         return {
           success: false,
-          error: result.message || '用户名或密码错误'
+          error: result?.message || '用户名或密码错误'
         };
       }
     } catch (error) {
@@ -70,7 +72,7 @@ export default function Login(props) {
     try {
       const result = await authenticateWithCloudFunction(data.username, data.password);
       if (result.success) {
-        // 保存登录状态
+        // 保存登录状态到本地存储
         localStorage.setItem('userId', result.user.userId);
         localStorage.setItem('userInfo', JSON.stringify(result.user));
         toast({
@@ -78,12 +80,12 @@ export default function Login(props) {
           description: `欢迎回来，${result.user.nickName || result.user.name}`
         });
 
-        // 跳转到首页
+        // 延迟跳转，让用户看到成功提示
         setTimeout(() => {
           $w.utils.navigateTo({
             pageId: 'index'
           });
-        }, 1000);
+        }, 1500);
       } else {
         setLoginError(result.error);
         toast({
@@ -117,6 +119,11 @@ export default function Login(props) {
         variant: 'destructive'
       });
     }
+  };
+
+  // 返回上一页
+  const handleBack = () => {
+    $w.utils.navigateBack();
   };
   return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">

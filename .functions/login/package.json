@@ -2,7 +2,7 @@
     {
       "name": "login",
       "version": "1.0.0",
-      "description": "用户登录云函数，验证用户名密码并返回用户信息",
+      "description": "用户登录验证云函数，基于 essay_correction_records 数据模型",
       "main": "index.js",
       "dependencies": {
         "@cloudbase/node-sdk": "^3.10.0"
