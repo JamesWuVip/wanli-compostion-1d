@@ -36,7 +36,7 @@ export default function Login(props) {
     };
     checkOnlineStatus();
     window.addEventListener('online', checkOnlineStatus);
-    window.addEventListener('offline', checkOnlineStatus);
+    window.removeEventListener('offline', checkOnlineStatus);
 
     // 检查云函数状态
     checkCloudFunction();
@@ -49,7 +49,7 @@ export default function Login(props) {
   // 检查云函数状态
   const checkCloudFunction = async () => {
     try {
-      const result = await $w.cloud.callFunction({
+      await $w.cloud.callFunction({
         name: 'login',
         data: {
           username: 'test',
@@ -72,7 +72,9 @@ export default function Login(props) {
       if (cloudFunctionStatus === 'unavailable') {
         throw new Error('登录服务暂时无法访问，请稍后重试或联系管理员');
       }
-      console.log('正在调用云函数 login...');
+      console.log('正在调用云函数 login，参数:', {
+        username
+      });
       const result = await $w.cloud.callFunction({
         name: 'login',
         data: {
@@ -87,43 +89,47 @@ export default function Login(props) {
         throw new Error('服务器响应异常，请稍后重试');
       }
 
-      // 处理云函数返回的标准格式
-      if (result.code === 0 && result.data) {
-        // 成功状态，与云函数返回格式完全一致
-        return {
-          success: true,
-          user: result.data,
-          message: result.message || '登录成功'
-        };
-      } else if (result.code === 400) {
-        // 参数错误
-        return {
-          success: false,
-          error: result.message || '输入信息有误，请检查后重试'
-        };
-      } else if (result.code === 401) {
-        // 认证失败
-        return {
-          success: false,
-          error: result.message || '用户名或密码错误，请重新输入'
-        };
-      } else if (result.code === 500) {
-        // 服务器错误
-        return {
-          success: false,
-          error: '服务器繁忙，请稍后重试'
-        };
-      } else {
-        // 其他错误
-        return {
-          success: false,
-          error: result.message || '登录失败，请稍后重试'
-        };
+      // 完全对齐云函数的错误码处理
+      switch (result.code) {
+        case 0:
+          // 成功状态
+          if (!result.data || !result.data._id) {
+            throw new Error('用户数据格式错误，请联系管理员');
+          }
+          return {
+            success: true,
+            user: result.data,
+            message: result.message || '登录成功'
+          };
+        case 400:
+          // 参数错误 - 与云函数保持一致
+          return {
+            success: false,
+            error: result.message || '输入信息有误，请检查后重试'
+          };
+        case 401:
+          // 认证失败 - 与云函数保持一致
+          return {
+            success: false,
+            error: result.message || '用户名或密码错误，请重新输入'
+          };
+        case 500:
+          // 服务器错误 - 与云函数保持一致
+          return {
+            success: false,
+            error: '服务器繁忙，请稍后重试'
+          };
+        default:
+          // 其他错误
+          return {
+            success: false,
+            error: result.message || '登录失败，请稍后重试'
+          };
       }
     } catch (error) {
       console.error('云函数调用异常:', error);
 
-      // 友好的错误提示文案
+      // 友好的错误提示文案，与云函数错误类型对应
       let errorMessage = '登录失败，请稍后重试';
       if (error.message.includes('FUNCTION_NOT_FOUND')) {
         errorMessage = '登录服务未正确部署，请联系系统管理员';
@@ -165,14 +171,15 @@ export default function Login(props) {
           className: 'bg-green-50 border-green-200'
         });
 
-        // 确保跳转到首页
+        // 跳转到首页
         setTimeout(() => {
           $w.utils.navigateTo({
             pageId: 'index',
             params: {
               from: 'login',
               userId: result.user._id,
-              username: result.user.username
+              username: result.user.username,
+              userType: result.user.type
             }
           });
         }, 1500);
