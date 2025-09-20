@@ -1,9 +1,9 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Checkbox, useToast, Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Checkbox, useToast, Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, Badge } from '@/components/ui';
 // @ts-ignore;
-import { Search, Trash2, Heart, Share2, CheckSquare, Square } from 'lucide-react';
+import { Search, Trash2, Heart, Share2, CheckSquare, Square, Star, Clock } from 'lucide-react';
 
 export default function History(props) {
   const {
@@ -19,6 +19,7 @@ export default function History(props) {
   const [totalPages, setTotalPages] = useState(1);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState([]);
+  const [filterFavorite, setFilterFavorite] = useState(false);
   const pageSize = 10;
   const userId = localStorage.getItem('userId');
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function History(props) {
       return;
     }
     loadRecords();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, filterFavorite]);
   const formatDate = date => {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -38,6 +39,26 @@ export default function History(props) {
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day} ${hours}:${minutes}`;
+  };
+  const getScoreColor = score => {
+    if (score >= 90) return 'bg-green-100 text-green-800';
+    if (score >= 80) return 'bg-blue-100 text-blue-800';
+    if (score >= 70) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+  const getGradeColor = grade => {
+    switch (grade) {
+      case '优秀':
+        return 'bg-green-100 text-green-800';
+      case '良好':
+        return 'bg-blue-100 text-blue-800';
+      case '中等':
+        return 'bg-yellow-100 text-yellow-800';
+      case '及格':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
   const loadRecords = async () => {
     try {
@@ -51,6 +72,11 @@ export default function History(props) {
               user_id: {
                 $eq: userId
               },
+              ...(filterFavorite ? {
+                is_favorite: {
+                  $eq: true
+                }
+              } : {}),
               ...(searchTerm ? {
                 $or: [{
                   title: {
@@ -58,6 +84,10 @@ export default function History(props) {
                   }
                 }, {
                   search_text: {
+                    $search: searchTerm
+                  }
+                }, {
+                  original_text: {
                     $search: searchTerm
                   }
                 }]
@@ -261,7 +291,10 @@ export default function History(props) {
   };
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-500">加载中...</div>
+        </div>
       </div>;
   }
   return <div className="min-h-screen bg-gray-50">
@@ -277,12 +310,22 @@ export default function History(props) {
             </Button>
           </div>
           
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input placeholder="搜索标题或内容..." value={searchTerm} onChange={e => {
-            setSearchTerm(e.target.value);
+          <div className="flex space-x-4 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input placeholder="搜索标题或内容..." value={searchTerm} onChange={e => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }} className="pl-10" />
+            </div>
+            
+            <Button variant={filterFavorite ? "default" : "outline"} size="sm" onClick={() => {
+            setFilterFavorite(!filterFavorite);
             setCurrentPage(1);
-          }} className="pl-10" />
+          }} className={filterFavorite ? 'bg-yellow-500 hover:bg-yellow-600' : ''}>
+              <Star className={`w-4 h-4 mr-2 ${filterFavorite ? 'fill-current' : ''}`} />
+              收藏
+            </Button>
           </div>
         </div>
       </div>
@@ -290,7 +333,18 @@ export default function History(props) {
       <div className="max-w-4xl mx-auto px-4 py-6">
         {records.length === 0 ? <Card>
             <CardContent className="text-center py-12">
-              <p className="text-gray-500">暂无记录</p>
+              <div className="text-gray-400 mb-4">
+                <Search className="w-16 h-16 mx-auto" />
+              </div>
+              <p className="text-gray-500">
+                {searchTerm || filterFavorite ? '没有找到符合条件的记录' : '暂无批改记录'}
+              </p>
+              {(searchTerm || filterFavorite) && <Button variant="outline" className="mt-4" onClick={() => {
+            setSearchTerm('');
+            setFilterFavorite(false);
+          }}>
+                  清除筛选
+                </Button>}
             </CardContent>
           </Card> : <>
             <div className="space-y-4">
@@ -300,15 +354,27 @@ export default function History(props) {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
                           {batchMode && <Checkbox checked={selectedRecords.includes(record._id)} onClick={e => e.stopPropagation()} onCheckedChange={() => handleSelectRecord(record._id)} />}
-                          <h3 className="font-semibold">{record.title}</h3>
-                          {record.is_favorite && <Heart className="w-4 h-4 text-red-500 fill-current" />}
+                          <h3 className="font-semibold text-lg">{record.title || '未命名作文'}</h3>
+                          {record.is_favorite && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {record.search_text?.substring(0, 100)}...
+                        
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Badge className={getScoreColor(record.score || 0)}>
+                            {record.score || 0}分
+                          </Badge>
+                          <Badge className={getGradeColor(record.grade)}>
+                            {record.grade || '未评定'}
+                          </Badge>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                          {record.search_text || record.original_text?.substring(0, 100) || '无内容预览'}
+                          {(record.search_text || record.original_text)?.length > 100 && '...'}
                         </p>
-                        <div className="text-xs text-gray-500">
+                        
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Clock className="w-3 h-3 mr-1" />
                           {formatDate(record.createdAt)}
-                          <span className="ml-2">得分：{record.score}分</span>
                         </div>
                       </div>
                       
@@ -317,7 +383,7 @@ export default function History(props) {
                     e.stopPropagation();
                     handleToggleFavorite(record._id, record.is_favorite);
                   }}>
-                            <Heart className={`w-4 h-4 ${record.is_favorite ? 'text-red-500 fill-current' : ''}`} />
+                            <Star className={`w-4 h-4 ${record.is_favorite ? 'text-yellow-500 fill-current' : ''}`} />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={e => {
                     e.stopPropagation();
@@ -373,11 +439,11 @@ export default function History(props) {
             
             <div className="flex space-x-2">
               <Button variant="outline" size="sm" onClick={() => handleBatchFavorite(true)}>
-                <Heart className="w-4 h-4 mr-2" />
+                <Star className="w-4 h-4 mr-2" />
                 批量收藏
               </Button>
               <Button variant="outline" size="sm" onClick={() => handleBatchFavorite(false)}>
-                <Heart className="w-4 h-4 mr-2" />
+                <Star className="w-4 h-4 mr-2" />
                 批量取消
               </Button>
               <Button variant="destructive" size="sm" onClick={handleBatchDelete}>

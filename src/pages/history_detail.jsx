@@ -1,9 +1,9 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Badge, useToast } from '@/components/ui';
 // @ts-ignore;
-import { ArrowLeft, Download, Heart, Share2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Heart, Share2, Trash2, CheckCircle, AlertCircle, Info, Star, Clock } from 'lucide-react';
 
 export default function HistoryDetail(props) {
   const {
@@ -28,6 +28,26 @@ export default function HistoryDetail(props) {
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day} ${hours}:${minutes}`;
+  };
+  const getScoreColor = score => {
+    if (score >= 90) return 'bg-green-100 text-green-800';
+    if (score >= 80) return 'bg-blue-100 text-blue-800';
+    if (score >= 70) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+  const getGradeColor = grade => {
+    switch (grade) {
+      case '优秀':
+        return 'bg-green-100 text-green-800';
+      case '良好':
+        return 'bg-blue-100 text-blue-800';
+      case '中等':
+        return 'bg-yellow-100 text-yellow-800';
+      case '及格':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
   const loadRecord = async () => {
     try {
@@ -86,7 +106,7 @@ export default function HistoryDetail(props) {
     const printContent = `
       <html>
         <head>
-          <title>${record.title} - 作文批改详情</title>
+          <title>${record.title || '作文批改详情'} - 作文批改结果</title>
           <style>
             body { 
               font-family: Arial, sans-serif; 
@@ -98,6 +118,15 @@ export default function HistoryDetail(props) {
               margin-bottom: 30px;
               border-bottom: 2px solid #333;
               padding-bottom: 20px;
+            }
+            .score-badge {
+              display: inline-block;
+              padding: 8px 16px;
+              background: #007bff;
+              color: white;
+              border-radius: 20px;
+              font-weight: bold;
+              margin: 0 8px;
             }
             .section { 
               margin-bottom: 30px; 
@@ -118,49 +147,108 @@ export default function HistoryDetail(props) {
               background: #f9f9f9;
               border-radius: 5px;
               margin: 10px 0;
+              white-space: pre-wrap;
             }
-            .annotation { 
-              background: #fff3cd; 
-              padding: 15px; 
-              margin: 10px 0; 
-              border-left: 4px solid #ffc107;
+            .correction-item {
+              background: #f8f9fa;
+              padding: 15px;
+              margin: 10px 0;
+              border-left: 4px solid #007bff;
               border-radius: 5px;
             }
-            .score {
-              font-size: 18px;
-              font-weight: bold;
-              color: #007bff;
+            .error-item {
+              background: #fff5f5;
+              border-left-color: #dc3545;
+            }
+            .positive-item {
+              background: #f0fff4;
+              border-left-color: #28a745;
+            }
+            .optimization-item {
+              background: #fff3cd;
+              border-left-color: #ffc107;
+            }
+            .annotation-item {
+              background: #fff3cd;
+              border-left-color: #ffc107;
             }
           </style>
         </head>
         <body>
           <div class="header">
             <h1>作文批改详情</h1>
+            <div>
+              <span class="score-badge">${record.score || 0}分</span>
+              <span class="score-badge">${record.grade || '未评定'}</span>
+            </div>
           </div>
           
           <div class="section">
-            <div class="title">${record.title}</div>
+            <div class="title">${record.title || '未命名作文'}</div>
             <div class="meta">
               批改时间：${formatDate(record.createdAt)}
-              <br>
-              <span class="score">得分：${record.score}分 (${record.grade})</span>
             </div>
           </div>
           
           <div class="section">
             <h2>原文</h2>
-            <div class="content">${record.original_text}</div>
+            <div class="content">${record.original_text || '无原文内容'}</div>
           </div>
           
+          ${record.annotated_text && record.annotated_text.length > 0 ? `
           <div class="section">
-            <h2>批改结果</h2>
-            <div class="content">${record.annotated_text}</div>
+            <h2>批改标注</h2>
+            ${record.annotated_text.map(annotation => `
+              <div class="correction-item annotation-item">
+                <strong>${annotation.type || '标注'}:</strong> ${annotation.content || ''}
+              </div>
+            `).join('')}
           </div>
+          ` : ''}
           
+          ${record.errors && record.errors.length > 0 ? `
           <div class="section">
-            <h2>评语</h2>
-            <div class="annotation">${record.feedback}</div>
+            <h2>错别字</h2>
+            ${record.errors.map(error => `
+              <div class="correction-item error-item">
+                <strong>错误:</strong> ${error.original || ''} → <strong>正确:</strong> ${error.corrected || ''}
+                ${error.explanation ? `<br><small>说明: ${error.explanation}</small>` : ''}
+              </div>
+            `).join('')}
           </div>
+          ` : ''}
+          
+          ${record.positives && record.positives.length > 0 ? `
+          <div class="section">
+            <h2>优点</h2>
+            ${record.positives.map(positive => `
+              <div class="correction-item positive-item">
+                <strong>${positive.type || '优点'}:</strong> ${positive.content || ''}
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+          
+          ${record.optimizations && record.optimizations.length > 0 ? `
+          <div class="section">
+            <h2>优化建议</h2>
+            ${record.optimizations.map(optimization => `
+              <div class="correction-item optimization-item">
+                <strong>${optimization.type || '建议'}:</strong> ${optimization.content || ''}
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+          
+          ${record.feedback ? `
+          <div class="section">
+            <h2>总体评价</h2>
+            <div class="correction-item">
+              <strong>评分:</strong> ${record.feedback.score || record.score || 0}分
+              ${record.feedback.content ? `<br><strong>评价:</strong> ${record.feedback.content}` : ''}
+            </div>
+          </div>
+          ` : ''}
         </body>
       </html>
     `;
@@ -243,12 +331,21 @@ export default function HistoryDetail(props) {
   };
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-500">加载中...</div>
+        </div>
       </div>;
   }
   if (!record) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">记录不存在</div>
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <div className="text-gray-500">记录不存在</div>
+          <Button variant="outline" className="mt-4" onClick={() => $w.utils.navigateBack()}>
+            返回
+          </Button>
+        </div>
       </div>;
   }
   return <div className="min-h-screen bg-gray-50">
@@ -276,8 +373,8 @@ export default function HistoryDetail(props) {
                 分享
               </Button>
               
-              <Button variant="outline" size="sm" onClick={handleToggleFavorite} className={isFavorite ? 'text-red-500' : ''}>
-                <Heart className={`w-4 h-4 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+              <Button variant="outline" size="sm" onClick={handleToggleFavorite} className={isFavorite ? 'text-yellow-500' : ''}>
+                <Star className={`w-4 h-4 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
                 {isFavorite ? '已收藏' : '收藏'}
               </Button>
               
@@ -291,44 +388,163 @@ export default function HistoryDetail(props) {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">{record.title}</CardTitle>
-            <div className="text-sm text-gray-600 mt-2">
-              <p>批改时间：{formatDate(record.createdAt)}</p>
-              <p>得分：{record.score}分 ({record.grade})</p>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">原文</h3>
+        <div className="space-y-6">
+          {/* 标题和评分 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl">{record.title || '未命名作文'}</CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Badge className={getScoreColor(record.score || 0)}>
+                    {record.score || 0}分
+                  </Badge>
+                  <Badge className={getGradeColor(record.grade)}>
+                    {record.grade || '未评定'}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex items-center text-sm text-gray-600 mt-2">
+                <Clock className="w-4 h-4 mr-1" />
+                批改时间：{formatDate(record.createdAt)}
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* 原文 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Info className="w-5 h-5 mr-2 text-blue-600" />
+                原文内容
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
-                {record.original_text}
+                {record.original_text || '无原文内容'}
               </div>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-2">批改结果</h3>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div dangerouslySetInnerHTML={{
-                __html: record.annotated_text
-              }} />
+            </CardContent>
+          </Card>
+
+          {/* OCR识别文本 */}
+          {record.ocr_text && record.ocr_text !== record.original_text && <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Info className="w-5 h-5 mr-2 text-green-600" />
+                OCR识别文本
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-green-50 p-4 rounded-lg whitespace-pre-wrap">
+                {record.ocr_text}
               </div>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-2">评语</h3>
-              <div className="bg-yellow-50 p-4 rounded-lg whitespace-pre-wrap">
-                {record.feedback}
+            </CardContent>
+          </Card>}
+
+          {/* 批改标注 */}
+          {record.annotated_text && record.annotated_text.length > 0 && <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-blue-600" />
+                批改标注
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {record.annotated_text.map((annotation, index) => <div key={index} className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500">
+                    <div className="font-semibold text-blue-800">{annotation.type || '标注'}</div>
+                    <div className="text-gray-700 mt-1">{annotation.content || ''}</div>
+                  </div>)}
               </div>
-            </div>
-            
-            {record.image_url && <div>
-                <h3 className="text-lg font-semibold mb-2">原始图片</h3>
-                <img src={record.image_url} alt="作文图片" className="max-w-md rounded-lg border" />
-              </div>}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>}
+
+          {/* 错别字 */}
+          {record.errors && record.errors.length > 0 && <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
+                错别字
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {record.errors.map((error, index) => <div key={index} className="bg-red-50 p-3 rounded-lg border-l-4 border-red-500">
+                    <div className="font-semibold text-red-800">
+                      <span className="line-through">{error.original || ''}</span> → {error.corrected || ''}
+                    </div>
+                    {error.explanation && <div className="text-gray-700 mt-1 text-sm">{error.explanation}</div>}
+                  </div>)}
+              </div>
+            </CardContent>
+          </Card>}
+
+          {/* 优点 */}
+          {record.positives && record.positives.length > 0 && <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                优点
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {record.positives.map((positive, index) => <div key={index} className="bg-green-50 p-3 rounded-lg border-l-4 border-green-500">
+                    <div className="font-semibold text-green-800">{positive.type || '优点'}</div>
+                    <div className="text-gray-700 mt-1">{positive.content || ''}</div>
+                  </div>)}
+              </div>
+            </CardContent>
+          </Card>}
+
+          {/* 优化建议 */}
+          {record.optimizations && record.optimizations.length > 0 && <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Info className="w-5 h-5 mr-2 text-yellow-600" />
+                优化建议
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {record.optimizations.map((optimization, index) => <div key={index} className="bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500">
+                    <div className="font-semibold text-yellow-800">{optimization.type || '建议'}</div>
+                    <div className="text-gray-700 mt-1">{optimization.content || ''}</div>
+                  </div>)}
+              </div>
+            </CardContent>
+          </Card>}
+
+          {/* 总体评价 */}
+          {record.feedback && <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Info className="w-5 h-5 mr-2 text-purple-600" />
+                总体评价
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="font-semibold text-purple-800 mb-2">
+                  评分: {record.feedback.score || record.score || 0}分
+                </div>
+                <div className="text-gray-700">{record.feedback.content || ''}</div>
+              </div>
+            </CardContent>
+          </Card>}
+
+          {/* 原始图片 */}
+          {record.image_url && <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Info className="w-5 h-5 mr-2 text-gray-600" />
+                原始图片
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <img src={record.image_url} alt="作文图片" className="max-w-md rounded-lg border shadow-sm" />
+            </CardContent>
+          </Card>}
+        </div>
       </div>
     </div>;
 }

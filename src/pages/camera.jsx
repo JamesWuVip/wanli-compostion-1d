@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 // @ts-ignore;
 import { Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@/components/ui';
 // @ts-ignore;
-import { Camera, Upload, RotateCcw, Check } from 'lucide-react';
+import { Camera, Upload, RotateCcw, Check, Loader2 } from 'lucide-react';
 
 export default function CameraPage(props) {
   const {
@@ -14,6 +14,8 @@ export default function CameraPage(props) {
   } = useToast();
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrResult, setOcrResult] = useState(null);
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -57,6 +59,8 @@ export default function CameraPage(props) {
       const imageData = canvas.toDataURL('image/jpeg');
       setImage(imageData);
       stopCamera();
+      // 自动进行OCR识别
+      performOCR(imageData);
     }
   };
   const handleFileUpload = event => {
@@ -64,9 +68,56 @@ export default function CameraPage(props) {
     if (file) {
       const reader = new FileReader();
       reader.onload = e => {
-        setImage(e.target.result);
+        const imageData = e.target.result;
+        setImage(imageData);
+        // 自动进行OCR识别
+        performOCR(imageData);
       };
       reader.readAsDataURL(file);
+    }
+  };
+  const performOCR = async imageData => {
+    setOcrLoading(true);
+    setOcrResult(null);
+    try {
+      // 将base64图片转换为文件
+      const response = await fetch(imageData);
+      const blob = await response.blob();
+      const file = new File([blob], 'essay.jpg', {
+        type: 'image/jpeg'
+      });
+
+      // 调用OCR云函数
+      const result = await $w.cloud.callFunction({
+        name: 'ocrRecognition',
+        data: {
+          imageFile: file,
+          fileName: 'essay.jpg'
+        }
+      });
+      if (result.success && result.text) {
+        setOcrResult(result.text);
+        toast({
+          title: '文字识别成功',
+          description: '已识别出作文内容'
+        });
+      } else {
+        throw new Error(result.error || 'OCR识别失败');
+      }
+    } catch (error) {
+      console.error('OCR识别错误:', error);
+      toast({
+        title: '文字识别失败',
+        description: error.message || '请确保图片清晰且包含文字',
+        variant: 'destructive'
+      });
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+  const handleRetryOCR = () => {
+    if (image) {
+      performOCR(image);
     }
   };
   const handleNext = () => {
@@ -76,10 +127,18 @@ export default function CameraPage(props) {
       });
       return;
     }
+    if (!ocrResult) {
+      toast({
+        title: '请等待文字识别完成',
+        variant: 'destructive'
+      });
+      return;
+    }
     $w.utils.navigateTo({
       pageId: 'ocr_confirm',
       params: {
-        image: image
+        image: image,
+        text: ocrResult
       }
     });
   };
@@ -141,15 +200,48 @@ export default function CameraPage(props) {
             
             {image && <div className="space-y-4">
                 <img src={image} alt="作文图片" className="w-full max-w-md mx-auto rounded-lg border" />
+                
+                {/* OCR处理状态 */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">文字识别状态</h3>
+                  
+                  {ocrLoading && <div className="flex items-center space-x-2 text-blue-600">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>正在识别文字，请稍候...</span>
+                    </div>}
+                  
+                  {!ocrLoading && ocrResult && <div className="space-y-2">
+                      <div className="flex items-center space-x-2 text-green-600">
+                        <Check className="w-4 h-4" />
+                        <span>文字识别完成</span>
+                      </div>
+                      <div className="bg-white p-3 rounded border text-sm max-h-32 overflow-y-auto">
+                        <p className="text-gray-700">{ocrResult.substring(0, 200)}{ocrResult.length > 200 ? '...' : ''}</p>
+                      </div>
+                    </div>}
+                  
+                  {!ocrLoading && !ocrResult && <div className="flex items-center space-x-2 text-red-600">
+                      <RotateCcw className="w-4 h-4" />
+                      <span>文字识别失败</span>
+                    </div>}
+                </div>
+                
                 <div className="flex justify-center space-x-4">
                   <Button variant="outline" onClick={() => {
                 setImage(null);
+                setOcrResult(null);
                 setIsCameraActive(false);
               }}>
                     <RotateCcw className="w-4 h-4 mr-2" />
                     重新拍摄
                   </Button>
-                  <Button onClick={handleNext} className="bg-green-600">
+                  
+                  {!ocrLoading && !ocrResult && <Button onClick={handleRetryOCR} variant="outline">
+                    <Loader2 className="w-4 h-4 mr-2" />
+                    重新识别
+                  </Button>}
+                  
+                  <Button onClick={handleNext} className="bg-green-600" disabled={!ocrResult || ocrLoading}>
                     <Check className="w-4 h-4 mr-2" />
                     下一步
                   </Button>
