@@ -18,6 +18,8 @@ export default function Index(props) {
   const [authError, setAuthError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
+
+  // 验证用户信息数据格式
   const validateUserInfo = data => {
     if (!data || typeof data !== 'object') {
       throw new Error('用户信息格式错误');
@@ -29,6 +31,8 @@ export default function Index(props) {
     }
     return true;
   };
+
+  // 检查用户登录状态
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
@@ -75,6 +79,8 @@ export default function Index(props) {
       setLoading(false);
     }
   };
+
+  // 重试检查登录状态
   const handleRetry = () => {
     if (retryCount < maxRetries) {
       setRetryCount(prev => prev + 1);
@@ -87,6 +93,8 @@ export default function Index(props) {
       });
     }
   };
+
+  // 清除错误状态
   const handleClearError = () => {
     setAuthError(null);
     setRetryCount(0);
@@ -94,6 +102,8 @@ export default function Index(props) {
   useEffect(() => {
     checkAuthStatus();
   }, []);
+
+  // 处理开始批改
   const handleStartCorrection = () => {
     if (!isLoggedIn) {
       $w.utils.navigateTo({
@@ -105,6 +115,8 @@ export default function Index(props) {
       });
     }
   };
+
+  // 处理查看历史
   const handleViewHistory = () => {
     if (!isLoggedIn) {
       $w.utils.navigateTo({
@@ -146,6 +158,7 @@ export default function Index(props) {
   }
   return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* 头部 */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">智能作文批改系统</h1>
           <p className="text-xl text-gray-600">AI驱动作文批改，让写作更高效</p>
@@ -160,6 +173,7 @@ export default function Index(props) {
             </div>}
         </div>
 
+        {/* 功能卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleStartCorrection}>
             <CardHeader className="text-center">
@@ -196,6 +210,7 @@ export default function Index(props) {
           </Card>
         </div>
 
+        {/* 功能介绍 */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -238,6 +253,7 @@ export default function Index(props) {
           </CardContent>
         </Card>
 
+        {/* 使用说明 */}
         <Card>
           <CardHeader>
             <CardTitle>使用说明</CardTitle>
