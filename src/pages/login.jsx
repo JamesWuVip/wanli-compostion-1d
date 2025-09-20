@@ -1,9 +1,9 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, useToast, Alert, AlertDescription } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, useToast, Alert, AlertDescription, AlertTitle } from '@/components/ui';
 // @ts-ignore;
-import { User, Lock, Eye, EyeOff, Loader2, RefreshCw, CheckCircle, AlertCircle, WifiOff } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Loader2, RefreshCw, CheckCircle, AlertCircle, WifiOff, Server, Settings } from 'lucide-react';
 
 // @ts-ignore;
 import { useForm } from 'react-hook-form';
@@ -21,6 +21,7 @@ export default function Login(props) {
   const [loginError, setLoginError] = useState(null);
   const [isOnline, setIsOnline] = useState(true);
   const [cloudFunctionStatus, setCloudFunctionStatus] = useState('checking');
+  const [serviceError, setServiceError] = useState(null);
   const {
     register,
     handleSubmit,
@@ -30,41 +31,137 @@ export default function Login(props) {
     reset,
     setValue
   } = useForm();
+
+  // 网络状态监听
   useEffect(() => {
     const checkOnlineStatus = () => {
-      setIsOnline(navigator.onLine);
+      const online = navigator.onLine;
+      setIsOnline(online);
+      if (online) {
+        checkCloudFunction();
+      } else {
+        setCloudFunctionStatus('offline');
+      }
     };
     checkOnlineStatus();
     window.addEventListener('online', checkOnlineStatus);
     window.addEventListener('offline', checkOnlineStatus);
-    checkCloudFunction();
     return () => {
       window.removeEventListener('online', checkOnlineStatus);
       window.removeEventListener('offline', checkOnlineStatus);
     };
   }, []);
+
+  // 优化的云函数状态检查
   const checkCloudFunction = async () => {
     try {
-      await $w.cloud.callFunction({
+      setCloudFunctionStatus('checking');
+      setServiceError(null);
+
+      // 使用轻量级健康检查
+      const result = await $w.cloud.callFunction({
         name: 'login',
         data: {
-          username: 'test',
-          password: 'test'
+          username: '',
+          password: ''
         }
       });
-      setCloudFunctionStatus('available');
+
+      // 检查返回格式是否正确
+      if (result && typeof result === 'object') {
+        setCloudFunctionStatus('available');
+      } else {
+        throw new Error('服务响应格式异常');
+      }
     } catch (error) {
-      console.error('云函数检查失败:', error);
+      console.error('服务检查失败:', error);
+
+      // 详细错误分类
+      let errorType = 'unknown';
+      let errorMessage = '服务暂时不可用';
+      if (error.message?.includes('FUNCTION_NOT_FOUND')) {
+        errorType = 'not_deployed';
+        errorMessage = '登录服务未部署，请联系管理员';
+      } else if (error.message?.includes('timeout')) {
+        errorType = 'timeout';
+        errorMessage = '连接超时，请检查网络';
+      } else if (error.message?.includes('ECONNREFUSED')) {
+        errorType = 'connection_refused';
+        errorMessage = '无法连接到服务器';
+      } else if (error.message?.includes('PERMISSION_DENIED')) {
+        errorType = 'permission_denied';
+        errorMessage = '权限不足，请联系管理员';
+      } else if (error.code === -1) {
+        // 空参数导致的400错误，这是正常的
+        setCloudFunctionStatus('available');
+        return;
+      } else {
+        errorType = 'service_error';
+        errorMessage = '服务异常，请稍后重试';
+      }
+      setServiceError({
+        type: errorType,
+        message: errorMessage,
+        details: error.message
+      });
       setCloudFunctionStatus('unavailable');
     }
   };
+
+  // 获取服务状态提示
+  const getServiceStatusMessage = () => {
+    if (!isOnline) {
+      return {
+        title: '网络连接不可用',
+        message: '请检查您的网络设置后重试',
+        icon: <WifiOff className="w-12 h-12 text-red-500" />,
+        actions: [{
+          label: '刷新页面',
+          onClick: () => window.location.reload()
+        }]
+      };
+    }
+    switch (cloudFunctionStatus) {
+      case 'checking':
+        return {
+          title: '正在检查服务状态...',
+          message: '请稍候',
+          icon: <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+        };
+      case 'available':
+        return null;
+      case 'unavailable':
+        return {
+          title: '服务暂时不可用',
+          message: serviceError?.message || '请稍后重试或联系管理员',
+          icon: <Server className="w-12 h-12 text-orange-500" />,
+          actions: [{
+            label: '重新检查',
+            onClick: checkCloudFunction
+          }, {
+            label: '联系管理员',
+            onClick: () => {
+              toast({
+                title: '联系管理员',
+                description: '请通过系统设置联系技术支持',
+                duration: 3000
+              });
+            }
+          }]
+        };
+      default:
+        return null;
+    }
+  };
+
+  // 使用云函数进行用户认证
   const authenticateWithCloudFunction = async (username, password) => {
     try {
       if (!isOnline) {
         throw new Error('网络连接不可用，请检查您的网络设置');
       }
-      if (cloudFunctionStatus === 'unavailable') {
-        throw new Error('登录服务暂时无法访问，请稍后重试或联系管理员');
+      if (cloudFunctionStatus !== 'available') {
+        throw new Error('登录服务暂时无法访问，请稍后重试');
       }
       const result = await $w.cloud.callFunction({
         name: 'login',
@@ -74,7 +171,7 @@ export default function Login(props) {
         }
       });
 
-      // 完全对齐云函数返回格式
+      // 严格验证返回格式
       if (!result || typeof result !== 'object') {
         throw new Error('服务器响应异常，请稍后重试');
       }
@@ -163,36 +260,20 @@ export default function Login(props) {
     setValue('password', password);
     setLoginError(null);
   };
-  if (!isOnline) {
-    return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <WifiOff className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">网络连接不可用</h2>
-          <p className="text-gray-600 mb-4">请检查您的网络连接后重试</p>
-          <Button onClick={() => window.location.reload()} variant="outline">
-            刷新页面
-          </Button>
-        </div>
-      </div>;
-  }
-  if (cloudFunctionStatus === 'checking') {
-    return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="text-center">
-          <Loader2 className="w-16 h-16 text-blue-500 mx-auto mb-4 animate-spin" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">正在检查服务状态...</h2>
-        </div>
-      </div>;
-  }
-  if (cloudFunctionStatus === 'unavailable') {
+  const statusMessage = getServiceStatusMessage();
+
+  // 服务状态提示页面
+  if (statusMessage && cloudFunctionStatus !== 'available') {
     return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">登录服务暂不可用</h2>
-          <p className="text-gray-600 mb-4">请联系系统管理员检查云函数部署状态</p>
-          <Button onClick={checkCloudFunction} variant="outline">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            重新检查
-          </Button>
+          {statusMessage.icon}
+          <h2 className="text-xl font-semibold text-gray-700 mt-4 mb-2">{statusMessage.title}</h2>
+          <p className="text-gray-600 mb-6">{statusMessage.message}</p>
+          {statusMessage.actions && <div className="flex justify-center space-x-3">
+              {statusMessage.actions.map((action, index) => <Button key={index} onClick={action.onClick} variant={index === 0 ? 'default' : 'outline'}>
+                  {action.label}
+                </Button>)}
+            </div>}
         </div>
       </div>;
   }
@@ -231,7 +312,7 @@ export default function Login(props) {
                     value: /^[a-zA-Z0-9_-]+$/,
                     message: '用户名只能包含字母、数字、下划线和横线'
                   }
-                })} placeholder="请输入用户名" className="pl-10 pr-4 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading} />
+                })} placeholder="请输入用户名" className="pl-10 pr-4 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading || cloudFunctionStatus !== 'available'} />
                 </div>
                 {errors.username && <p className="text-sm text-red-500 mt-1">{errors.username.message}</p>}
               </div>
@@ -252,7 +333,7 @@ export default function Login(props) {
                     value: 30,
                     message: '密码最多30个字符'
                   }
-                })} type={showPassword ? 'text' : 'password'} placeholder="请输入密码" className="pl-10 pr-12 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading} />
+                })} type={showPassword ? 'text' : 'password'} placeholder="请输入密码" className="pl-10 pr-12 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading || cloudFunctionStatus !== 'available'} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" disabled={loading}>
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -264,7 +345,7 @@ export default function Login(props) {
                   <AlertDescription>{loginError}</AlertDescription>
                 </Alert>}
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled={loading}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled={loading || cloudFunctionStatus !== 'available'}>
                 {loading ? <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     登录中...
@@ -279,13 +360,13 @@ export default function Login(props) {
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-3">快速测试账号：</p>
                 <div className="grid grid-cols-1 gap-2">
-                  <button type="button" onClick={() => fillTestAccount('admin', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading}>
+                  <button type="button" onClick={() => fillTestAccount('admin', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading || cloudFunctionStatus !== 'available'}>
                     管理员: admin / 123456
                   </button>
-                  <button type="button" onClick={() => fillTestAccount('student', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading}>
+                  <button type="button" onClick={() => fillTestAccount('student', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading || cloudFunctionStatus !== 'available'}>
                     学生: student / 123456
                   </button>
-                  <button type="button" onClick={() => fillTestAccount('teacher', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading}>
+                  <button type="button" onClick={() => fillTestAccount('teacher', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading || cloudFunctionStatus !== 'available'}>
                     老师: teacher / 123456
                   </button>
                 </div>
