@@ -1,9 +1,9 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Button, Card, CardContent, CardHeader, CardTitle, Badge, useToast } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Badge, useToast, Alert, AlertDescription } from '@/components/ui';
 // @ts-ignore;
-import { ArrowLeft, Download, Share2, Save, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Save, CheckCircle, AlertCircle, Info, Check } from 'lucide-react';
 
 export default function Result(props) {
   const {
@@ -15,6 +15,8 @@ export default function Result(props) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [apiError, setApiError] = useState(null);
   const userId = localStorage.getItem('userId');
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
   const originalText = $w.page.dataset.params?.text;
@@ -22,22 +24,58 @@ export default function Result(props) {
   const correctionResult = $w.page.dataset.params?.correctionResult;
   useEffect(() => {
     if (!originalText) {
-      $w.utils.navigateBack();
+      toast({
+        title: '参数错误',
+        description: '缺少作文内容，请重新拍照',
+        variant: 'destructive'
+      });
+      $w.utils.navigateTo({
+        pageId: 'camera'
+      });
       return;
     }
     loadCorrectionResult();
   }, []);
+  const validateCorrectionResult = data => {
+    if (!data || typeof data !== 'object') {
+      throw new Error('批改结果数据格式错误');
+    }
+
+    // 验证必要字段
+    if (!data.score && !data.feedback?.score) {
+      throw new Error('批改结果缺少评分信息');
+    }
+    if (!data.title && !originalText) {
+      throw new Error('批改结果缺少作文内容');
+    }
+
+    // 验证数据类型
+    if (data.score && typeof data.score !== 'number') {
+      throw new Error('评分数据类型错误');
+    }
+    if (data.feedback && data.feedback.score && typeof data.feedback.score !== 'number') {
+      throw new Error('反馈评分数据类型错误');
+    }
+    return true;
+  };
   const loadCorrectionResult = async () => {
     try {
       setLoading(true);
+      setApiError(null);
 
-      // 如果从ocr_confirm页面传递了批改结果，直接使用
+      // 如果从ocr_confirm页面传递了批改结果，验证后直接使用
       if (correctionResult) {
-        setResult(correctionResult);
-        return;
+        try {
+          validateCorrectionResult(correctionResult);
+          setResult(correctionResult);
+          return;
+        } catch (validationError) {
+          console.warn('传递的批改结果验证失败，重新调用API:', validationError.message);
+          // 验证失败，继续调用API
+        }
       }
 
-      // 否则调用作文批改API
+      // 调用作文批改API
       const apiResult = await $w.cloud.callFunction({
         name: 'essayCorrection',
         data: {
@@ -46,12 +84,15 @@ export default function Result(props) {
         }
       });
       if (apiResult.success && apiResult.correctionResult) {
+        // 验证API返回的数据
+        validateCorrectionResult(apiResult.correctionResult);
         setResult(apiResult.correctionResult);
       } else {
-        throw new Error(apiResult.error || '作文批改失败');
+        throw new Error(apiResult.error || apiResult.message || '作文批改失败');
       }
     } catch (error) {
       console.error('作文批改错误:', error);
+      setApiError(error.message || '作文批改失败');
       toast({
         title: '批改失败',
         description: error.message || '请检查网络连接后重试',
@@ -62,38 +103,64 @@ export default function Result(props) {
     }
   };
   const handleSave = async () => {
-    if (!result || !userId) return;
+    if (!result || !userId) {
+      toast({
+        title: '保存失败',
+        description: '缺少必要信息',
+        variant: 'destructive'
+      });
+      return;
+    }
     setSaving(true);
     try {
-      await $w.cloud.callDataSource({
+      // 构建保存数据，确保与数据模型字段匹配
+      const saveData = {
+        user_id: userId,
+        title: result.title || '作文批改',
+        original_text: originalText,
+        search_text: originalText.substring(0, 100),
+        ocr_text: originalText,
+        score: result.score || result.feedback?.score || 0,
+        grade: result.grade || '待评定',
+        is_favorite: false,
+        annotated_text: result.annotated_text || [],
+        errors: result.errors || [],
+        positives: result.positives || [],
+        optimizations: result.optimizations || [],
+        feedback: result.feedback || {},
+        image_url: image || ''
+      };
+
+      // 验证保存数据
+      if (!saveData.score || saveData.score < 0) {
+        throw new Error('评分数据无效');
+      }
+      const saveResult = await $w.cloud.callDataSource({
         dataSourceName: 'essay_correction_records',
         methodName: 'wedaCreateV2',
         params: {
-          data: {
-            user_id: userId,
-            title: result.title || '作文批改',
-            original_text: originalText,
-            search_text: originalText.substring(0, 100),
-            ocr_text: originalText,
-            score: result.score || 0,
-            grade: result.grade || '待评定',
-            is_favorite: false,
-            annotated_text: result.annotated_text || [],
-            errors: result.errors || [],
-            positives: result.positives || [],
-            optimizations: result.optimizations || [],
-            feedback: result.feedback || {},
-            image_url: image || ''
-          }
+          data: saveData
         }
       });
-      toast({
-        title: '保存成功'
-      });
+      if (saveResult.id) {
+        setSaveSuccess(true);
+        toast({
+          title: '保存成功',
+          description: '批改记录已保存到历史记录中'
+        });
+
+        // 3秒后隐藏成功提示
+        setTimeout(() => {
+          setSaveSuccess(false);
+        }, 3000);
+      } else {
+        throw new Error('保存失败，未获取到记录ID');
+      }
     } catch (error) {
+      console.error('保存错误:', error);
       toast({
         title: '保存失败',
-        description: error.message,
+        description: error.message || '请检查网络连接后重试',
         variant: 'destructive'
       });
     } finally {
@@ -104,7 +171,8 @@ export default function Result(props) {
     const shareUrl = `${window.location.origin}/history_detail?recordId=${result.id || 'mock'}&shared=true`;
     navigator.clipboard.writeText(shareUrl);
     toast({
-      title: '分享链接已复制'
+      title: '分享链接已复制',
+      description: '链接已复制到剪贴板，可以分享给他人查看'
     });
   };
   const handleExport = () => {
@@ -133,9 +201,28 @@ export default function Result(props) {
               color: white;
               border-radius: 20px;
               font-weight: bold;
+              margin: 0 8px;
             }
             .section { 
               margin-bottom: 30px; 
+            }
+            .title { 
+              font-size: 24px; 
+              font-weight: bold; 
+              margin-bottom: 10px; 
+            }
+            .meta { 
+              color: #666; 
+              margin-bottom: 20px; 
+              font-size: 14px;
+            }
+            .content { 
+              line-height: 1.8; 
+              padding: 15px;
+              background: #f9f9f9;
+              border-radius: 5px;
+              margin: 10px 0;
+              white-space: pre-wrap;
             }
             .correction-item {
               background: #f8f9fa;
@@ -156,24 +243,38 @@ export default function Result(props) {
               background: #fff3cd;
               border-left-color: #ffc107;
             }
+            .annotation-item {
+              background: #fff3cd;
+              border-left-color: #ffc107;
+            }
           </style>
         </head>
         <body>
           <div class="header">
             <h1>作文批改结果</h1>
-            <div class="score-badge">${result.score || 0}分 (${result.grade || '待评定'})</div>
+            <div>
+              <span class="score-badge">${result.score || result.feedback?.score || 0}分</span>
+              <span class="score-badge">${result.grade || '未评定'}</span>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="title">${result.title || '未命名作文'}</div>
+            <div class="meta">
+              批改时间：${new Date().toLocaleString()}
+            </div>
           </div>
           
           <div class="section">
             <h2>原文</h2>
-            <div>${originalText}</div>
+            <div class="content">${originalText || '无原文内容'}</div>
           </div>
           
           ${result.annotated_text && result.annotated_text.length > 0 ? `
           <div class="section">
             <h2>批改标注</h2>
             ${result.annotated_text.map(annotation => `
-              <div class="correction-item">
+              <div class="correction-item annotation-item">
                 <strong>${annotation.type || '标注'}:</strong> ${annotation.content || ''}
               </div>
             `).join('')}
@@ -186,7 +287,7 @@ export default function Result(props) {
             ${result.errors.map(error => `
               <div class="correction-item error-item">
                 <strong>错误:</strong> ${error.original || ''} → <strong>正确:</strong> ${error.corrected || ''}
-                <br><small>说明: ${error.explanation || ''}</small>
+                ${error.explanation ? `<br><small>说明: ${error.explanation}</small>` : ''}
               </div>
             `).join('')}
           </div>
@@ -218,8 +319,8 @@ export default function Result(props) {
           <div class="section">
             <h2>总体评价</h2>
             <div class="correction-item">
-              <strong>总体评分:</strong> ${result.feedback.score || result.score || 0}分
-              <br><strong>评价:</strong> ${result.feedback.content || ''}
+              <strong>评分:</strong> ${result.feedback.score || result.score || 0}分
+              ${result.feedback.content ? `<br><strong>评价:</strong> ${result.feedback.content}` : ''}
             </div>
           </div>
           ` : ''}
@@ -231,16 +332,49 @@ export default function Result(props) {
     printWindow.print();
   };
   const getScoreColor = score => {
-    if (score >= 90) return 'text-green-600 bg-green-100';
-    if (score >= 80) return 'text-blue-600 bg-blue-100';
-    if (score >= 70) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+    if (score >= 90) return 'bg-green-100 text-green-800';
+    if (score >= 80) return 'bg-blue-100 text-blue-800';
+    if (score >= 70) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+  const getGradeColor = grade => {
+    switch (grade) {
+      case '优秀':
+        return 'bg-green-100 text-green-800';
+      case '良好':
+        return 'bg-blue-100 text-blue-800';
+      case '中等':
+        return 'bg-yellow-100 text-yellow-800';
+      case '及格':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <div className="text-gray-500">AI正在批改中，请稍候...</div>
+        </div>
+      </div>;
+  }
+  if (apiError) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <div className="text-gray-500 mb-4">获取批改结果失败</div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{apiError}</AlertDescription>
+          </Alert>
+          <div className="space-x-2">
+            <Button onClick={loadCorrectionResult} variant="outline">
+              重试
+            </Button>
+            <Button variant="outline" onClick={() => $w.utils.navigateBack()}>
+              返回
+            </Button>
+          </div>
         </div>
       </div>;
   }
@@ -268,6 +402,16 @@ export default function Result(props) {
         </div>
       </div>
 
+      {/* 保存成功提示 */}
+      {saveSuccess && <div className="bg-green-50 border-b border-green-200">
+          <div className="max-w-4xl mx-auto px-4 py-3">
+            <div className="flex items-center text-green-700">
+              <Check className="w-4 h-4 mr-2" />
+              <span>保存成功！批改记录已保存到历史记录中</span>
+            </div>
+          </div>
+        </div>}
+
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="space-y-6">
           {/* 评分卡片 */}
@@ -275,9 +419,14 @@ export default function Result(props) {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl">{result.title || '作文批改'}</CardTitle>
-                <Badge className={`text-lg px-4 py-2 ${getScoreColor(result.score || 0)}`}>
-                  {result.score || 0}分 ({result.grade || '待评定'})
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge className={`text-lg px-4 py-2 ${getScoreColor(result.score || result.feedback?.score || 0)}`}>
+                    {result.score || result.feedback?.score || 0}分
+                  </Badge>
+                  <Badge className={getGradeColor(result.grade)}>
+                    {result.grade || '待评定'}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
           </Card>
@@ -301,7 +450,7 @@ export default function Result(props) {
           {result.annotated_text && result.annotated_text.length > 0 && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                <CheckCircle className="w-5 h-5 mr-2 text-blue-600" />
                 批改标注
               </CardTitle>
             </CardHeader>

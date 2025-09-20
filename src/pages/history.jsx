@@ -1,9 +1,9 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Checkbox, useToast, Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, Badge } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Checkbox, useToast, Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, Badge, Alert, AlertDescription } from '@/components/ui';
 // @ts-ignore;
-import { Search, Trash2, Heart, Share2, CheckSquare, Square, Star, Clock } from 'lucide-react';
+import { Search, Trash2, Heart, Share2, CheckSquare, Square, Star, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function History(props) {
   const {
@@ -20,10 +20,18 @@ export default function History(props) {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [filterFavorite, setFilterFavorite] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
   const pageSize = 10;
   const userId = localStorage.getItem('userId');
   useEffect(() => {
     if (!userId) {
+      toast({
+        title: '请先登录',
+        description: '登录后可查看历史记录',
+        variant: 'destructive'
+      });
       $w.utils.navigateTo({
         pageId: 'login'
       });
@@ -31,8 +39,18 @@ export default function History(props) {
     }
     loadRecords();
   }, [currentPage, searchTerm, filterFavorite]);
+  const validateRecordData = record => {
+    if (!record || typeof record !== 'object') {
+      return false;
+    }
+    // 验证必要字段
+    const requiredFields = ['_id', 'user_id', 'title', 'original_text', 'score', 'grade', 'createdAt'];
+    return requiredFields.every(field => record[field] !== undefined && record[field] !== null);
+  };
   const formatDate = date => {
+    if (!date) return '未知时间';
     const d = new Date(date);
+    if (isNaN(d.getTime())) return '无效时间';
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -41,6 +59,7 @@ export default function History(props) {
     return `${year}-${month}-${day} ${hours}:${minutes}`;
   };
   const getScoreColor = score => {
+    if (typeof score !== 'number' || score < 0) return 'bg-gray-100 text-gray-800';
     if (score >= 90) return 'bg-green-100 text-green-800';
     if (score >= 80) return 'bg-blue-100 text-blue-800';
     if (score >= 70) return 'bg-yellow-100 text-yellow-800';
@@ -63,37 +82,45 @@ export default function History(props) {
   const loadRecords = async () => {
     try {
       setLoading(true);
+      setApiError(null);
+
+      // 构建查询条件
+      const filter = {
+        where: {
+          user_id: {
+            $eq: userId
+          }
+        }
+      };
+
+      // 添加收藏筛选
+      if (filterFavorite) {
+        filter.where.is_favorite = {
+          $eq: true
+        };
+      }
+
+      // 添加搜索条件
+      if (searchTerm.trim()) {
+        filter.where.$or = [{
+          title: {
+            $search: searchTerm.trim()
+          }
+        }, {
+          search_text: {
+            $search: searchTerm.trim()
+          }
+        }, {
+          original_text: {
+            $search: searchTerm.trim()
+          }
+        }];
+      }
       const result = await $w.cloud.callDataSource({
         dataSourceName: 'essay_correction_records',
         methodName: 'wedaGetRecordsV2',
         params: {
-          filter: {
-            where: {
-              user_id: {
-                $eq: userId
-              },
-              ...(filterFavorite ? {
-                is_favorite: {
-                  $eq: true
-                }
-              } : {}),
-              ...(searchTerm ? {
-                $or: [{
-                  title: {
-                    $search: searchTerm
-                  }
-                }, {
-                  search_text: {
-                    $search: searchTerm
-                  }
-                }, {
-                  original_text: {
-                    $search: searchTerm
-                  }
-                }]
-              } : {})
-            }
-          },
+          filter,
           select: {
             $master: true
           },
@@ -105,16 +132,50 @@ export default function History(props) {
           getCount: true
         }
       });
-      setRecords(result.records || []);
+
+      // 验证返回数据
+      if (!result || typeof result !== 'object') {
+        throw new Error('查询结果格式错误');
+      }
+      if (!Array.isArray(result.records)) {
+        throw new Error('记录列表格式错误');
+      }
+
+      // 验证每条记录数据
+      const validRecords = result.records.filter(record => {
+        const isValid = validateRecordData(record);
+        if (!isValid) {
+          console.warn('发现无效记录:', record);
+        }
+        return isValid;
+      });
+      setRecords(validRecords);
       setTotalPages(Math.ceil((result.total || 0) / pageSize));
+
+      // 重置重试计数
+      setRetryCount(0);
     } catch (error) {
+      console.error('加载历史记录错误:', error);
+      setApiError(error.message || '加载历史记录失败');
       toast({
         title: '加载失败',
-        description: error.message,
+        description: error.message || '请检查网络连接后重试',
         variant: 'destructive'
       });
     } finally {
       setLoading(false);
+    }
+  };
+  const handleRetry = () => {
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1);
+      loadRecords();
+    } else {
+      toast({
+        title: '重试次数已达上限',
+        description: '请检查网络连接或稍后重试',
+        variant: 'destructive'
+      });
     }
   };
   const handleRecordClick = record => {
@@ -146,7 +207,7 @@ export default function History(props) {
       });
       return;
     }
-    if (!confirm(`确定要删除选中的 ${selectedRecords.length} 条记录吗？`)) return;
+    if (!confirm(`确定要删除选中的 ${selectedRecords.length} 条记录吗？此操作不可恢复。`)) return;
     try {
       await $w.cloud.callDataSource({
         dataSourceName: 'essay_correction_records',
@@ -165,7 +226,8 @@ export default function History(props) {
         }
       });
       toast({
-        title: '批量删除成功'
+        title: '批量删除成功',
+        description: `已删除 ${selectedRecords.length} 条记录`
       });
       setSelectedRecords([]);
       setBatchMode(false);
@@ -206,7 +268,8 @@ export default function History(props) {
         }
       });
       toast({
-        title: favorite ? '批量收藏成功' : '批量取消收藏成功'
+        title: favorite ? '批量收藏成功' : '批量取消收藏成功',
+        description: `已${favorite ? '收藏' : '取消收藏'} ${selectedRecords.length} 条记录`
       });
       setSelectedRecords([]);
       loadRecords();
@@ -255,11 +318,12 @@ export default function History(props) {
     const shareUrl = `${window.location.origin}/history_detail?recordId=${recordId}&shared=true`;
     navigator.clipboard.writeText(shareUrl);
     toast({
-      title: '分享链接已复制'
+      title: '分享链接已复制',
+      description: '链接已复制到剪贴板，可以分享给他人查看'
     });
   };
   const handleDelete = async recordId => {
-    if (!confirm('确定要删除这条记录吗？')) return;
+    if (!confirm('确定要删除这条记录吗？此操作不可恢复。')) return;
     try {
       await $w.cloud.callDataSource({
         dataSourceName: 'essay_correction_records',
@@ -293,7 +357,32 @@ export default function History(props) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-gray-500">加载中...</div>
+          <div className="text-gray-500">加载历史记录中...</div>
+        </div>
+      </div>;
+  }
+  if (apiError) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <div className="text-gray-500 mb-4">加载历史记录失败</div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{apiError}</AlertDescription>
+          </Alert>
+          <div className="space-x-2">
+            <Button onClick={handleRetry} disabled={retryCount >= maxRetries} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              重试 {retryCount < maxRetries && `(${maxRetries - retryCount})`}
+            </Button>
+            <Button variant="outline" onClick={() => {
+            setSearchTerm('');
+            setFilterFavorite(false);
+            setApiError(null);
+            loadRecords();
+          }}>
+              清除筛选
+            </Button>
+          </div>
         </div>
       </div>;
   }
@@ -336,15 +425,22 @@ export default function History(props) {
               <div className="text-gray-400 mb-4">
                 <Search className="w-16 h-16 mx-auto" />
               </div>
-              <p className="text-gray-500">
+              <p className="text-gray-500 mb-4">
                 {searchTerm || filterFavorite ? '没有找到符合条件的记录' : '暂无批改记录'}
               </p>
-              {(searchTerm || filterFavorite) && <Button variant="outline" className="mt-4" onClick={() => {
-            setSearchTerm('');
-            setFilterFavorite(false);
-          }}>
-                  清除筛选
-                </Button>}
+              <div className="space-x-2">
+                {(searchTerm || filterFavorite) && <Button variant="outline" onClick={() => {
+              setSearchTerm('');
+              setFilterFavorite(false);
+            }}>
+                    清除筛选
+                  </Button>}
+                {!searchTerm && !filterFavorite && <Button onClick={() => $w.utils.navigateTo({
+              pageId: 'camera'
+            })}>
+                    开始拍照批改
+                  </Button>}
+              </div>
             </CardContent>
           </Card> : <>
             <div className="space-y-4">

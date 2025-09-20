@@ -1,9 +1,9 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Button, Card, CardContent, CardHeader, CardTitle, Badge, useToast } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Badge, useToast, Alert, AlertDescription } from '@/components/ui';
 // @ts-ignore;
-import { ArrowLeft, Download, Heart, Share2, Trash2, CheckCircle, AlertCircle, Info, Star, Clock } from 'lucide-react';
+import { ArrowLeft, Download, Heart, Share2, Trash2, CheckCircle, AlertCircle, Info, Star, Clock, RefreshCw } from 'lucide-react';
 
 export default function HistoryDetail(props) {
   const {
@@ -15,13 +15,44 @@ export default function HistoryDetail(props) {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
   const userId = localStorage.getItem('userId');
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
   useEffect(() => {
     loadRecord();
   }, []);
+  const validateRecordData = data => {
+    if (!data || typeof data !== 'object') {
+      throw new Error('记录数据格式错误');
+    }
+
+    // 验证必要字段
+    const requiredFields = ['_id', 'user_id', 'title', 'original_text', 'score', 'grade', 'createdAt'];
+    const missingFields = requiredFields.filter(field => data[field] === undefined || data[field] === null);
+    if (missingFields.length > 0) {
+      throw new Error(`记录缺少必要字段: ${missingFields.join(', ')}`);
+    }
+
+    // 验证数据类型
+    if (typeof data.score !== 'number' || data.score < 0) {
+      throw new Error('评分数据无效');
+    }
+
+    // 验证数组字段
+    const arrayFields = ['annotated_text', 'errors', 'positives', 'optimizations'];
+    arrayFields.forEach(field => {
+      if (data[field] && !Array.isArray(data[field])) {
+        throw new Error(`${field} 字段格式错误`);
+      }
+    });
+    return true;
+  };
   const formatDate = date => {
+    if (!date) return '未知时间';
     const d = new Date(date);
+    if (isNaN(d.getTime())) return '无效时间';
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -30,6 +61,7 @@ export default function HistoryDetail(props) {
     return `${year}-${month}-${day} ${hours}:${minutes}`;
   };
   const getScoreColor = score => {
+    if (typeof score !== 'number' || score < 0) return 'bg-gray-100 text-gray-800';
     if (score >= 90) return 'bg-green-100 text-green-800';
     if (score >= 80) return 'bg-blue-100 text-blue-800';
     if (score >= 70) return 'bg-yellow-100 text-yellow-800';
@@ -51,14 +83,12 @@ export default function HistoryDetail(props) {
   };
   const loadRecord = async () => {
     try {
+      setLoading(true);
+      setApiError(null);
       const recordId = $w.page.dataset.params?.recordId;
       const isShared = $w.page.dataset.params?.shared === 'true';
       if (!recordId) {
-        toast({
-          title: '记录不存在',
-          variant: 'destructive'
-        });
-        return;
+        throw new Error('记录ID不能为空');
       }
       const result = await $w.cloud.callDataSource({
         dataSourceName: 'essay_correction_records',
@@ -81,23 +111,41 @@ export default function HistoryDetail(props) {
           }
         }
       });
-      if (result) {
-        setRecord(result);
-        setIsFavorite(result.is_favorite || false);
-      } else {
-        toast({
-          title: '记录不存在或无权限',
-          variant: 'destructive'
-        });
+
+      // 验证返回数据
+      if (!result) {
+        throw new Error('记录不存在');
       }
+
+      // 验证数据完整性
+      validateRecordData(result);
+      setRecord(result);
+      setIsFavorite(result.is_favorite || false);
+
+      // 重置重试计数
+      setRetryCount(0);
     } catch (error) {
+      console.error('加载记录错误:', error);
+      setApiError(error.message || '加载记录失败');
       toast({
         title: '加载失败',
-        description: error.message,
+        description: error.message || '请检查网络连接后重试',
         variant: 'destructive'
       });
     } finally {
       setLoading(false);
+    }
+  };
+  const handleRetry = () => {
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1);
+      loadRecord();
+    } else {
+      toast({
+        title: '重试次数已达上限',
+        description: '请检查网络连接或稍后重试',
+        variant: 'destructive'
+      });
     }
   };
   const handleExportPDF = () => {
@@ -195,6 +243,13 @@ export default function HistoryDetail(props) {
             <div class="content">${record.original_text || '无原文内容'}</div>
           </div>
           
+          ${record.ocr_text && record.ocr_text !== record.original_text ? `
+          <div class="section">
+            <h2>OCR识别文本</h2>
+            <div class="content">${record.ocr_text}</div>
+          </div>
+          ` : ''}
+          
           ${record.annotated_text && record.annotated_text.length > 0 ? `
           <div class="section">
             <h2>批改标注</h2>
@@ -257,6 +312,7 @@ export default function HistoryDetail(props) {
     printWindow.print();
   };
   const handleToggleFavorite = async () => {
+    if (!record || !userId) return;
     try {
       await $w.cloud.callDataSource({
         dataSourceName: 'essay_correction_records',
@@ -290,14 +346,17 @@ export default function HistoryDetail(props) {
     }
   };
   const handleShare = () => {
+    if (!record) return;
     const shareUrl = `${window.location.origin}/history_detail?recordId=${record._id}&shared=true`;
     navigator.clipboard.writeText(shareUrl);
     toast({
-      title: '分享链接已复制'
+      title: '分享链接已复制',
+      description: '链接已复制到剪贴板，可以分享给他人查看'
     });
   };
   const handleDelete = async () => {
-    if (!confirm('确定要删除这条记录吗？')) return;
+    if (!record || !userId) return;
+    if (!confirm('确定要删除这条记录吗？此操作不可恢复。')) return;
     try {
       await $w.cloud.callDataSource({
         dataSourceName: 'essay_correction_records',
@@ -333,7 +392,27 @@ export default function HistoryDetail(props) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-gray-500">加载中...</div>
+          <div className="text-gray-500">加载详情中...</div>
+        </div>
+      </div>;
+  }
+  if (apiError) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <div className="text-gray-500 mb-4">加载记录详情失败</div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{apiError}</AlertDescription>
+          </Alert>
+          <div className="space-x-2">
+            <Button onClick={handleRetry} disabled={retryCount >= maxRetries} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              重试 {retryCount < maxRetries && `(${maxRetries - retryCount})`}
+            </Button>
+            <Button variant="outline" onClick={() => $w.utils.navigateBack()}>
+              返回
+            </Button>
+          </div>
         </div>
       </div>;
   }
@@ -395,7 +474,7 @@ export default function HistoryDetail(props) {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl">{record.title || '未命名作文'}</CardTitle>
                 <div className="flex items-center space-x-2">
-                  <Badge className={getScoreColor(record.score || 0)}>
+                  <Badge className={`text-lg px-4 py-2 ${getScoreColor(record.score || 0)}`}>
                     {record.score || 0}分
                   </Badge>
                   <Badge className={getGradeColor(record.grade)}>
