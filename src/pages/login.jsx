@@ -1,9 +1,9 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, useToast, Alert, AlertDescription, AlertTitle } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, useToast, Alert, AlertDescription } from '@/components/ui';
 // @ts-ignore;
-import { User, Lock, Eye, EyeOff, Loader2, RefreshCw, CheckCircle, AlertCircle, WifiOff, Server, Settings, Mail } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Loader2, RefreshCw, CheckCircle, AlertCircle, WifiOff, Server } from 'lucide-react';
 
 // @ts-ignore;
 import { useForm } from 'react-hook-form';
@@ -22,6 +22,7 @@ export default function Login(props) {
   const [isOnline, setIsOnline] = useState(true);
   const [cloudFunctionStatus, setCloudFunctionStatus] = useState('checking');
   const [serviceError, setServiceError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
   const {
     register,
     handleSubmit,
@@ -52,13 +53,13 @@ export default function Login(props) {
     };
   }, []);
 
-  // 优化的云函数状态检查 - 使用合理的测试参数
+  // 优化的云函数状态检查
   const checkCloudFunction = async () => {
     try {
       setCloudFunctionStatus('checking');
       setServiceError(null);
 
-      // 使用合理的测试参数进行健康检查
+      // 使用轻量级健康检查
       const result = await $w.cloud.callFunction({
         name: 'login',
         data: {
@@ -70,12 +71,9 @@ export default function Login(props) {
       // 检查返回格式是否正确
       if (result && typeof result === 'object') {
         // 即使是认证失败（401）也说明服务是正常的
-        if (result.code === 401) {
-          setCloudFunctionStatus('available');
-        } else if (result.code === 0) {
+        if (result.code === 401 || result.code === 400 || result.code === 0) {
           setCloudFunctionStatus('available');
         } else {
-          // 其他错误代码也视为服务正常
           setCloudFunctionStatus('available');
         }
       } else {
@@ -86,7 +84,7 @@ export default function Login(props) {
 
       // 详细错误分类
       let errorType = 'unknown';
-      let errorMessage = '服务暂时不可用';
+      let errorMessage = '服务暂时不可用，请稍后重试';
       if (error.message?.includes('FUNCTION_NOT_FOUND')) {
         errorType = 'not_deployed';
         errorMessage = '登录服务未部署，请联系管理员';
@@ -99,13 +97,9 @@ export default function Login(props) {
       } else if (error.message?.includes('PERMISSION_DENIED')) {
         errorType = 'permission_denied';
         errorMessage = '权限不足，请联系管理员';
-      } else if (error.message?.includes('NETWORK_ERROR')) {
+      } else if (error.message?.includes('NETWORK')) {
         errorType = 'network_error';
         errorMessage = '网络连接异常，请检查网络设置';
-      } else if (error.code === 400) {
-        // 参数错误，但说明服务是正常的
-        setCloudFunctionStatus('available');
-        return;
       } else {
         errorType = 'service_error';
         errorMessage = '服务异常，请稍后重试';
@@ -145,7 +139,10 @@ export default function Login(props) {
       case 'unavailable':
         const actions = [{
           label: '重新检查',
-          onClick: checkCloudFunction,
+          onClick: () => {
+            setRetryCount(prev => prev + 1);
+            checkCloudFunction();
+          },
           variant: 'default'
         }];
         if (serviceError?.type === 'not_deployed') {
@@ -289,6 +286,7 @@ export default function Login(props) {
           </div>
           <h2 className="text-xl font-semibold text-gray-700 mt-4 mb-3">{statusMessage.title}</h2>
           <p className="text-gray-600 mb-6 text-sm leading-relaxed">{statusMessage.message}</p>
+          {retryCount > 0 && <p className="text-xs text-gray-500 mb-4">已尝试 {retryCount} 次</p>}
           {statusMessage.actions && <div className="flex justify-center space-x-3">
               {statusMessage.actions.map((action, index) => <Button key={index} onClick={action.onClick} variant={action.variant || 'default'} className="px-4 py-2 text-sm">
                 {action.label}
