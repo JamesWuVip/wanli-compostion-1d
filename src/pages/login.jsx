@@ -36,7 +36,7 @@ export default function Login(props) {
     };
     checkOnlineStatus();
     window.addEventListener('online', checkOnlineStatus);
-    window.removeEventListener('offline', checkOnlineStatus);
+    window.addEventListener('offline', checkOnlineStatus);
 
     // 检查云函数状态
     checkCloudFunction();
