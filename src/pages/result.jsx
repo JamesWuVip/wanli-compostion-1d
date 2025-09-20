@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 // @ts-ignore;
 import { Button, Card, CardContent, CardHeader, CardTitle, Badge, useToast, Alert, AlertDescription } from '@/components/ui';
 // @ts-ignore;
-import { ArrowLeft, Download, Share2, Save, CheckCircle, AlertCircle, Info, Check } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Save, CheckCircle, AlertCircle, Info, Check, Star, Clock, RefreshCw } from 'lucide-react';
 
 export default function Result(props) {
   const {
@@ -22,34 +22,16 @@ export default function Result(props) {
   const originalText = $w.page.dataset.params?.text;
   const image = $w.page.dataset.params?.image;
   const correctionResult = $w.page.dataset.params?.correctionResult;
-  useEffect(() => {
-    if (!originalText) {
-      toast({
-        title: '参数错误',
-        description: '缺少作文内容，请重新拍照',
-        variant: 'destructive'
-      });
-      $w.utils.navigateTo({
-        pageId: 'camera'
-      });
-      return;
-    }
-    loadCorrectionResult();
-  }, []);
   const validateCorrectionResult = data => {
     if (!data || typeof data !== 'object') {
       throw new Error('批改结果数据格式错误');
     }
-
-    // 验证必要字段
     if (!data.score && !data.feedback?.score) {
       throw new Error('批改结果缺少评分信息');
     }
     if (!data.title && !originalText) {
       throw new Error('批改结果缺少作文内容');
     }
-
-    // 验证数据类型
     if (data.score && typeof data.score !== 'number') {
       throw new Error('评分数据类型错误');
     }
@@ -58,24 +40,47 @@ export default function Result(props) {
     }
     return true;
   };
+  const formatDate = date => {
+    if (!date) return '未知时间';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '无效时间';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  };
+  const getScoreColor = score => {
+    if (typeof score !== 'number' || score < 0) return 'bg-gray-100 text-gray-800';
+    if (score >= 90) return 'bg-green-100 text-green-800';
+    if (score >= 80) return 'bg-blue-100 text-blue-800';
+    if (score >= 70) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+  const getGradeColor = grade => {
+    switch (grade) {
+      case '优秀':
+        return 'bg-green-100 text-green-800';
+      case '良好':
+        return 'bg-blue-100 text-blue-800';
+      case '中等':
+        return 'bg-yellow-100 text-yellow-800';
+      case '及格':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
   const loadCorrectionResult = async () => {
     try {
       setLoading(true);
       setApiError(null);
-
-      // 如果从ocr_confirm页面传递了批改结果，验证后直接使用
       if (correctionResult) {
-        try {
-          validateCorrectionResult(correctionResult);
-          setResult(correctionResult);
-          return;
-        } catch (validationError) {
-          console.warn('传递的批改结果验证失败，重新调用API:', validationError.message);
-          // 验证失败，继续调用API
-        }
+        validateCorrectionResult(correctionResult);
+        setResult(correctionResult);
+        return;
       }
-
-      // 调用作文批改API
       const apiResult = await $w.cloud.callFunction({
         name: 'essayCorrection',
         data: {
@@ -84,7 +89,6 @@ export default function Result(props) {
         }
       });
       if (apiResult.success && apiResult.correctionResult) {
-        // 验证API返回的数据
         validateCorrectionResult(apiResult.correctionResult);
         setResult(apiResult.correctionResult);
       } else {
@@ -113,7 +117,6 @@ export default function Result(props) {
     }
     setSaving(true);
     try {
-      // 构建保存数据，确保与数据模型字段匹配
       const saveData = {
         user_id: userId,
         title: result.title || '作文批改',
@@ -130,8 +133,6 @@ export default function Result(props) {
         feedback: result.feedback || {},
         image_url: image || ''
       };
-
-      // 验证保存数据
       if (!saveData.score || saveData.score < 0) {
         throw new Error('评分数据无效');
       }
@@ -148,8 +149,6 @@ export default function Result(props) {
           title: '保存成功',
           description: '批改记录已保存到历史记录中'
         });
-
-        // 3秒后隐藏成功提示
         setTimeout(() => {
           setSaveSuccess(false);
         }, 3000);
@@ -331,31 +330,14 @@ export default function Result(props) {
     printWindow.document.close();
     printWindow.print();
   };
-  const getScoreColor = score => {
-    if (score >= 90) return 'bg-green-100 text-green-800';
-    if (score >= 80) return 'bg-blue-100 text-blue-800';
-    if (score >= 70) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
-  };
-  const getGradeColor = grade => {
-    switch (grade) {
-      case '优秀':
-        return 'bg-green-100 text-green-800';
-      case '良好':
-        return 'bg-blue-100 text-blue-800';
-      case '中等':
-        return 'bg-yellow-100 text-yellow-800';
-      case '及格':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  useEffect(() => {
+    loadCorrectionResult();
+  }, []);
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-gray-500">AI正在批改中，请稍候...</div>
+          <div className="text-gray-500">加载批改结果中...</div>
         </div>
       </div>;
   }
@@ -363,15 +345,12 @@ export default function Result(props) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <div className="text-gray-500 mb-4">获取批改结果失败</div>
+          <div className="text-gray-500 mb-4">加载批改结果失败</div>
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{apiError}</AlertDescription>
           </Alert>
           <div className="space-x-2">
-            <Button onClick={loadCorrectionResult} variant="outline">
-              重试
-            </Button>
-            <Button variant="outline" onClick={() => $w.utils.navigateBack()}>
+            <Button onClick={() => $w.utils.navigateBack()} variant="outline">
               返回
             </Button>
           </div>
@@ -382,7 +361,7 @@ export default function Result(props) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <div className="text-gray-500">获取结果失败</div>
+          <div className="text-gray-500">批改结果不存在</div>
           <Button variant="outline" className="mt-4" onClick={() => $w.utils.navigateBack()}>
             返回
           </Button>
@@ -393,40 +372,47 @@ export default function Result(props) {
       <div className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">批改结果</h1>
-            <Button variant="ghost" onClick={() => $w.utils.navigateBack()}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              返回
-            </Button>
+            <h1 className="text-2xl font-bold">作文批改结果</h1>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="w-4 h-4 mr-2" />
+                导出
+              </Button>
+              <Button variant="outline" onClick={handleShare}>
+                <Share2 className="w-4 h-4 mr-2" />
+                分享
+              </Button>
+              <Button onClick={handleSave} disabled={saving || saveSuccess} className="bg-green-600">
+                {saving ? <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>保存中...</> : saveSuccess ? <><Check className="w-4 h-4 mr-2" />已保存</> : <><Save className="w-4 h-4 mr-2" />保存记录</>}
+              </Button>
+              <Button variant="ghost" onClick={() => $w.utils.navigateBack()}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                返回
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 保存成功提示 */}
-      {saveSuccess && <div className="bg-green-50 border-b border-green-200">
-          <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="flex items-center text-green-700">
-              <Check className="w-4 h-4 mr-2" />
-              <span>保存成功！批改记录已保存到历史记录中</span>
-            </div>
-          </div>
-        </div>}
-
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="space-y-6">
-          {/* 评分卡片 */}
+          {/* 评分和标题 */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">{result.title || '作文批改'}</CardTitle>
+                <CardTitle className="text-2xl">{result.title || '作文批改'}</CardTitle>
                 <div className="flex items-center space-x-2">
                   <Badge className={`text-lg px-4 py-2 ${getScoreColor(result.score || result.feedback?.score || 0)}`}>
                     {result.score || result.feedback?.score || 0}分
                   </Badge>
                   <Badge className={getGradeColor(result.grade)}>
-                    {result.grade || '待评定'}
+                    {result.grade || '未评定'}
                   </Badge>
                 </div>
+              </div>
+              <div className="flex items-center text-sm text-gray-600 mt-2">
+                <Clock className="w-4 h-4 mr-1" />
+                批改时间：{formatDate(new Date())}
               </div>
             </CardHeader>
           </Card>
@@ -441,116 +427,114 @@ export default function Result(props) {
             </CardHeader>
             <CardContent>
               <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
-                {originalText}
+                {originalText || '无原文内容'}
               </div>
             </CardContent>
           </Card>
 
           {/* 批改标注 */}
           {result.annotated_text && result.annotated_text.length > 0 && <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-blue-600" />
-                批改标注
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {result.annotated_text.map((annotation, index) => <div key={index} className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500">
-                    <div className="font-semibold text-blue-800">{annotation.type || '标注'}</div>
-                    <div className="text-gray-700 mt-1">{annotation.content || ''}</div>
-                  </div>)}
-              </div>
-            </CardContent>
-          </Card>}
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2 text-blue-600" />
+                  批改标注
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {result.annotated_text.map((annotation, index) => <div key={index} className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500">
+                      <div className="font-semibold text-blue-800">{annotation.type || '标注'}</div>
+                      <div className="text-gray-700 mt-1">{annotation.content || ''}</div>
+                    </div>)}
+                </div>
+              </CardContent>
+            </Card>}
 
           {/* 错别字 */}
           {result.errors && result.errors.length > 0 && <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
-                错别字
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {result.errors.map((error, index) => <div key={index} className="bg-red-50 p-3 rounded-lg border-l-4 border-red-500">
-                    <div className="font-semibold text-red-800">
-                      <span className="line-through">{error.original || ''}</span> → {error.corrected || ''}
-                    </div>
-                    {error.explanation && <div className="text-gray-700 mt-1 text-sm">{error.explanation}</div>}
-                  </div>)}
-              </div>
-            </CardContent>
-          </Card>}
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
+                  错别字
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {result.errors.map((error, index) => <div key={index} className="bg-red-50 p-3 rounded-lg border-l-4 border-red-500">
+                      <div className="font-semibold text-red-800">
+                        <span className="line-through">{error.original || ''}</span> → {error.corrected || ''}
+                      </div>
+                      {error.explanation && <div className="text-gray-700 mt-1 text-sm">{error.explanation}</div>}
+                    </div>)}
+                </div>
+              </CardContent>
+            </Card>}
 
           {/* 优点 */}
           {result.positives && result.positives.length > 0 && <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
-                优点
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {result.positives.map((positive, index) => <div key={index} className="bg-green-50 p-3 rounded-lg border-l-4 border-green-500">
-                    <div className="font-semibold text-green-800">{positive.type || '优点'}</div>
-                    <div className="text-gray-700 mt-1">{positive.content || ''}</div>
-                  </div>)}
-              </div>
-            </CardContent>
-          </Card>}
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                  优点
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {result.positives.map((positive, index) => <div key={index} className="bg-green-50 p-3 rounded-lg border-l-4 border-green-500">
+                      <div className="font-semibold text-green-800">{positive.type || '优点'}</div>
+                      <div className="text-gray-700 mt-1">{positive.content || ''}</div>
+                    </div>)}
+                </div>
+              </CardContent>
+            </Card>}
 
           {/* 优化建议 */}
           {result.optimizations && result.optimizations.length > 0 && <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Info className="w-5 h-5 mr-2 text-yellow-600" />
-                优化建议
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {result.optimizations.map((optimization, index) => <div key={index} className="bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500">
-                    <div className="font-semibold text-yellow-800">{optimization.type || '建议'}</div>
-                    <div className="text-gray-700 mt-1">{optimization.content || ''}</div>
-                  </div>)}
-              </div>
-            </CardContent>
-          </Card>}
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Info className="w-5 h-5 mr-2 text-yellow-600" />
+                  优化建议
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {result.optimizations.map((optimization, index) => <div key={index} className="bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500">
+                      <div className="font-semibold text-yellow-800">{optimization.type || '建议'}</div>
+                      <div className="text-gray-700 mt-1">{optimization.content || ''}</div>
+                    </div>)}
+                </div>
+              </CardContent>
+            </Card>}
 
           {/* 总体评价 */}
           {result.feedback && <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Info className="w-5 h-5 mr-2 text-purple-600" />
-                总体评价
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <div className="font-semibold text-purple-800 mb-2">
-                  评分: {result.feedback.score || result.score || 0}分
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Info className="w-5 h-5 mr-2 text-purple-600" />
+                  总体评价
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <div className="font-semibold text-purple-800 mb-2">
+                    评分: {result.feedback.score || result.score || 0}分
+                  </div>
+                  <div className="text-gray-700">{result.feedback.content || ''}</div>
                 </div>
-                <div className="text-gray-700">{result.feedback.content || ''}</div>
-              </div>
-            </CardContent>
-          </Card>}
+              </CardContent>
+            </Card>}
 
           {/* 操作按钮 */}
-          <div className="flex justify-center space-x-4 pt-6">
-            <Button onClick={handleSave} disabled={saving} className="bg-green-600">
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? '保存中...' : '保存记录'}
+          <div className="flex justify-center space-x-4">
+            <Button onClick={() => $w.utils.navigateTo({
+            pageId: 'camera'
+          })} variant="outline">
+              继续批改
             </Button>
-            <Button variant="outline" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" />
-              分享
-            </Button>
-            <Button variant="outline" onClick={handleExport}>
-              <Download className="w-4 h-4 mr-2" />
-              导出
+            <Button onClick={() => $w.utils.navigateTo({
+            pageId: 'history'
+          })} variant="outline">
+              查看历史
             </Button>
           </div>
         </div>

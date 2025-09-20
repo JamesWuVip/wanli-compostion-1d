@@ -24,8 +24,6 @@ export default function Index(props) {
     if (!data || typeof data !== 'object') {
       throw new Error('用户信息格式错误');
     }
-
-    // 验证必要字段
     const requiredFields = ['userId', 'name'];
     const missingFields = requiredFields.filter(field => data[field] === undefined || data[field] === null);
     if (missingFields.length > 0) {
@@ -46,23 +44,18 @@ export default function Index(props) {
         setUserInfo(null);
         return;
       }
-
-      // 解析并验证用户信息
       let parsedUserInfo;
       try {
         parsedUserInfo = JSON.parse(userInfoStr);
         validateUserInfo(parsedUserInfo);
       } catch (parseError) {
         console.warn('用户信息解析失败:', parseError.message);
-        // 清除无效的用户信息
         localStorage.removeItem('userId');
         localStorage.removeItem('userInfo');
         setIsLoggedIn(false);
         setUserInfo(null);
         return;
       }
-
-      // 验证用户ID一致性
       if (parsedUserInfo.userId !== userId) {
         console.warn('用户ID不一致，清除登录状态');
         localStorage.removeItem('userId');
@@ -73,8 +66,6 @@ export default function Index(props) {
       }
       setIsLoggedIn(true);
       setUserInfo(parsedUserInfo);
-
-      // 重置重试计数
       setRetryCount(0);
     } catch (error) {
       console.error('检查登录状态错误:', error);
@@ -172,7 +163,6 @@ export default function Index(props) {
           <h1 className="text-4xl font-bold text-gray-800 mb-4">智能作文批改系统</h1>
           <p className="text-xl text-gray-600">AI驱动作文批改，让写作更高效</p>
           
-          {/* 用户信息 */}
           {isLoggedIn && userInfo && <div className="mt-6 flex items-center justify-center space-x-2">
               <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-sm">
                 <User className="w-4 h-4 text-gray-600" />

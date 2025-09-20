@@ -58,10 +58,7 @@ export default function OCRConfirm(props) {
         }
       });
       if (result.success && result.correctionResult) {
-        // 重置重试计数
         setRetryCount(0);
-
-        // 跳转到结果页面，传递批改结果
         $w.utils.navigateTo({
           pageId: 'result',
           params: {
@@ -143,7 +140,6 @@ export default function OCRConfirm(props) {
           </Card>
         </div>
 
-        {/* 错误提示 */}
         {correctionError && <div className="mt-6">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -169,7 +165,6 @@ export default function OCRConfirm(props) {
             </div>
           </div>}
 
-        {/* 批改状态提示 */}
         {correcting && <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center space-x-2 text-blue-600">
               <Loader2 className="w-4 h-4 animate-spin" />
