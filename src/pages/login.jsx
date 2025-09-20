@@ -28,100 +28,37 @@ export default function Login(props) {
     reset
   } = useForm();
 
-  // 使用数据模型进行用户认证
-  const authenticateUser = async (username, password) => {
+  // 使用云函数进行用户认证
+  const authenticateWithCloudFunction = async (username, password) => {
     try {
-      // 查询用户数据模型（假设存在 users 数据模型）
-      const result = await $w.cloud.callDataSource({
-        dataSourceName: 'users',
-        methodName: 'wedaGetRecordsV2',
-        params: {
-          filter: {
-            where: {
-              $and: [{
-                username: {
-                  $eq: username
-                }
-              }, {
-                password: {
-                  $eq: password
-                }
-              }]
-            }
-          },
-          select: {
-            $master: true
-          },
-          pageSize: 1,
-          pageNumber: 1
+      const result = await $w.cloud.callFunction({
+        name: 'login',
+        data: {
+          username: username,
+          password: password
         }
       });
-      if (result.records && result.records.length > 0) {
-        const user = result.records[0];
+      if (result.code === 0) {
         return {
           success: true,
           user: {
-            userId: user._id,
-            name: user.name || user.username,
-            nickName: user.nickName || user.name || user.username,
-            avatarUrl: user.avatarUrl || ''
+            userId: result.data._id,
+            name: result.data.name || result.data.username,
+            nickName: result.data.nickName || result.data.name || result.data.username,
+            avatarUrl: result.data.avatarUrl || ''
           }
         };
       } else {
         return {
           success: false,
-          error: '用户名或密码错误'
+          error: result.message || '用户名或密码错误'
         };
       }
     } catch (error) {
-      console.error('认证错误:', error);
+      console.error('云函数调用错误:', error);
       return {
         success: false,
-        error: error.message || '认证失败'
-      };
-    }
-  };
-
-  // 模拟登录（当数据模型不存在时）
-  const simulateLogin = async (username, password) => {
-    // 模拟用户数据
-    const mockUsers = [{
-      userId: 'user_001',
-      username: 'admin',
-      password: '123456',
-      name: '管理员',
-      nickName: '管理员',
-      avatarUrl: 'https://via.placeholder.com/100'
-    }, {
-      userId: 'user_002',
-      username: 'student',
-      password: '123456',
-      name: '学生',
-      nickName: '小明',
-      avatarUrl: 'https://via.placeholder.com/100'
-    }, {
-      userId: 'user_003',
-      username: 'teacher',
-      password: '123456',
-      name: '老师',
-      nickName: '张老师',
-      avatarUrl: 'https://via.placeholder.com/100'
-    }];
-    const user = mockUsers.find(u => u.username === username && u.password === password);
-    if (user) {
-      return {
-        success: true,
-        user: {
-          userId: user.userId,
-          name: user.name,
-          nickName: user.nickName,
-          avatarUrl: user.avatarUrl
-        }
-      };
-    } else {
-      return {
-        success: false,
-        error: '用户名或密码错误'
+        error: error.message || '登录失败，请重试'
       };
     }
   };
@@ -131,16 +68,7 @@ export default function Login(props) {
     setLoading(true);
     setLoginError(null);
     try {
-      let result;
-
-      // 首先尝试使用数据模型认证
-      try {
-        result = await authenticateUser(data.username, data.password);
-      } catch (modelError) {
-        console.warn('数据模型认证失败，使用模拟登录:', modelError.message);
-        // 如果数据模型不存在，使用模拟登录
-        result = await simulateLogin(data.username, data.password);
-      }
+      const result = await authenticateWithCloudFunction(data.username, data.password);
       if (result.success) {
         // 保存登录状态
         localStorage.setItem('userId', result.user.userId);
