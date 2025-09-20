@@ -84,6 +84,21 @@
       "name": "image_url",
       "title": "作文图片",
       "type": "Image"
+    },
+    {
+      "name": "essay",
+      "title": "作文内容",
+      "type": "MultiLineString"
+    },
+    {
+      "name": "correction",
+      "title": "批改结果",
+      "type": "Object"
+    },
+    {
+      "name": "timestamp",
+      "title": "时间戳",
+      "type": "DateTime"
     }
   ]
 }

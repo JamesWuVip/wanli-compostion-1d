@@ -7,6 +7,8 @@ import { User, Lock, Eye, EyeOff, Loader2, RefreshCw, CheckCircle, AlertCircle, 
 
 // @ts-ignore;
 import { useForm } from 'react-hook-form';
+// @ts-ignore;
+import { ErrorHandler } from '@/components/ErrorHandler';
 export default function Login(props) {
   const {
     $w
@@ -28,8 +30,6 @@ export default function Login(props) {
     reset,
     setValue
   } = useForm();
-
-  // 检查网络状态和云函数
   useEffect(() => {
     const checkOnlineStatus = () => {
       setIsOnline(navigator.onLine);
@@ -37,16 +37,12 @@ export default function Login(props) {
     checkOnlineStatus();
     window.addEventListener('online', checkOnlineStatus);
     window.addEventListener('offline', checkOnlineStatus);
-
-    // 检查云函数状态
     checkCloudFunction();
     return () => {
       window.removeEventListener('online', checkOnlineStatus);
       window.removeEventListener('offline', checkOnlineStatus);
     };
   }, []);
-
-  // 检查云函数状态
   const checkCloudFunction = async () => {
     try {
       await $w.cloud.callFunction({
@@ -62,8 +58,6 @@ export default function Login(props) {
       setCloudFunctionStatus('unavailable');
     }
   };
-
-  // 使用云函数进行用户认证 - 完全对齐云函数接口
   const authenticateWithCloudFunction = async (username, password) => {
     try {
       if (!isOnline) {
@@ -72,9 +66,6 @@ export default function Login(props) {
       if (cloudFunctionStatus === 'unavailable') {
         throw new Error('登录服务暂时无法访问，请稍后重试或联系管理员');
       }
-      console.log('正在调用云函数 login，参数:', {
-        username
-      });
       const result = await $w.cloud.callFunction({
         name: 'login',
         data: {
@@ -82,17 +73,13 @@ export default function Login(props) {
           password: password.trim()
         }
       });
-      console.log('云函数返回结果:', result);
 
-      // 严格验证返回格式，与云函数保持一致
+      // 完全对齐云函数返回格式
       if (!result || typeof result !== 'object') {
         throw new Error('服务器响应异常，请稍后重试');
       }
-
-      // 完全对齐云函数的错误码处理
       switch (result.code) {
         case 0:
-          // 成功状态
           if (!result.data || !result.data._id) {
             throw new Error('用户数据格式错误，请联系管理员');
           }
@@ -102,76 +89,48 @@ export default function Login(props) {
             message: result.message || '登录成功'
           };
         case 400:
-          // 参数错误 - 与云函数保持一致
           return {
             success: false,
             error: result.message || '输入信息有误，请检查后重试'
           };
         case 401:
-          // 认证失败 - 与云函数保持一致
           return {
             success: false,
             error: result.message || '用户名或密码错误，请重新输入'
           };
         case 500:
-          // 服务器错误 - 与云函数保持一致
           return {
             success: false,
             error: '服务器繁忙，请稍后重试'
           };
         default:
-          // 其他错误
           return {
             success: false,
             error: result.message || '登录失败，请稍后重试'
           };
       }
     } catch (error) {
-      console.error('云函数调用异常:', error);
-
-      // 友好的错误提示文案，与云函数错误类型对应
-      let errorMessage = '登录失败，请稍后重试';
-      if (error.message.includes('FUNCTION_NOT_FOUND')) {
-        errorMessage = '登录服务未正确部署，请联系系统管理员';
-      } else if (error.message.includes('timeout')) {
-        errorMessage = '网络连接超时，请检查网络后重试';
-      } else if (error.message.includes('网络')) {
-        errorMessage = '网络连接异常，请检查您的网络设置';
-      } else if (error.message.includes('ECONNREFUSED')) {
-        errorMessage = '无法连接到服务器，请稍后重试';
-      } else if (error.message.includes('服务器')) {
-        errorMessage = '服务器暂时不可用，请稍后重试';
-      } else {
-        errorMessage = error.message || '登录过程中出现错误，请稍后重试';
-      }
       return {
         success: false,
-        error: errorMessage
+        error: ErrorHandler.handleCloudFunctionError(error, () => {})
       };
     }
   };
-
-  // 处理登录提交
   const onSubmit = async data => {
     setLoading(true);
     setLoginError(null);
     try {
       const result = await authenticateWithCloudFunction(data.username, data.password);
       if (result.success) {
-        // 保存用户信息到本地存储
         localStorage.setItem('userId', result.user._id);
         localStorage.setItem('userInfo', JSON.stringify(result.user));
         localStorage.setItem('loginTime', new Date().toISOString());
-
-        // 显示成功提示
         toast({
           title: '登录成功',
           description: `欢迎回来，${result.user.nickName || result.user.name || result.user.username}`,
           duration: 2000,
           className: 'bg-green-50 border-green-200'
         });
-
-        // 跳转到首页
         setTimeout(() => {
           $w.utils.navigateTo({
             pageId: 'index',
@@ -184,7 +143,6 @@ export default function Login(props) {
           });
         }, 1500);
       } else {
-        // 显示具体的错误信息
         setLoginError(result.error);
         toast({
           title: '登录失败',
@@ -194,28 +152,17 @@ export default function Login(props) {
         });
       }
     } catch (error) {
-      console.error('登录过程异常:', error);
-      const errorMsg = '登录过程中出现意外错误，请刷新页面后重试';
+      const errorMsg = ErrorHandler.handleCloudFunctionError(error, toast);
       setLoginError(errorMsg);
-      toast({
-        title: '登录失败',
-        description: errorMsg,
-        variant: 'destructive',
-        duration: 4000
-      });
     } finally {
       setLoading(false);
     }
   };
-
-  // 快速填充测试账号
   const fillTestAccount = (username, password) => {
     setValue('username', username);
     setValue('password', password);
     setLoginError(null);
   };
-
-  // 网络状态提示
   if (!isOnline) {
     return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="text-center">
@@ -228,8 +175,6 @@ export default function Login(props) {
         </div>
       </div>;
   }
-
-  // 云函数状态提示
   if (cloudFunctionStatus === 'checking') {
     return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="text-center">
