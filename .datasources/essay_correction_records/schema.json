@@ -1,0 +1,90 @@
+
+{
+  "name": "essay_correction_records",
+  "title": "作文批改记录",
+  "schemas": [
+    {
+      "name": "title",
+      "title": "作文标题",
+      "type": "String"
+    },
+    {
+      "name": "original_text",
+      "title": "原文内容",
+      "type": "MultiLineString"
+    },
+    {
+      "name": "search_text",
+      "title": "搜索文本",
+      "type": "String"
+    },
+    {
+      "name": "ocr_text",
+      "title": "OCR识别文本",
+      "type": "MultiLineString"
+    },
+    {
+      "name": "score",
+      "title": "作文得分",
+      "type": "Number"
+    },
+    {
+      "name": "grade",
+      "title": "作文等级",
+      "type": "String"
+    },
+    {
+      "name": "user_id",
+      "title": "用户ID",
+      "type": "String"
+    },
+    {
+      "name": "is_favorite",
+      "title": "是否收藏",
+      "type": "Boolean"
+    },
+    {
+      "name": "annotated_text",
+      "title": "批改标注",
+      "type": "Array",
+      "items": {
+        "type": "Object"
+      }
+    },
+    {
+      "name": "errors",
+      "title": "错别字列表",
+      "type": "Array",
+      "items": {
+        "type": "Object"
+      }
+    },
+    {
+      "name": "positives",
+      "title": "肯定列表",
+      "type": "Array",
+      "items": {
+        "type": "Object"
+      }
+    },
+    {
+      "name": "optimizations",
+      "title": "优化列表",
+      "type": "Array",
+      "items": {
+        "type": "Object"
+      }
+    },
+    {
+      "name": "feedback",
+      "title": "总体评价",
+      "type": "Object"
+    },
+    {
+      "name": "image_url",
+      "title": "作文图片",
+      "type": "Image"
+    }
+  ]
+}
+  

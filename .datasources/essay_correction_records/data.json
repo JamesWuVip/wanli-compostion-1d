@@ -1,0 +1,687 @@
+
+[
+  {
+    "_id": "record_001",
+    "title": "我的小狗",
+    "original_text": "我的小狗叫豆豆，它有一身雪白的毛，像一团棉花。它的眼睛圆圆的，像两颗黑葡萄。每天放学回家，豆豆都会摇着尾巴来迎接我。",
+    "search_text": "我的小狗 我的小狗叫豆豆，它有一身雪白的毛，像一团棉花。它的眼睛圆圆的，像两颗黑葡萄。每天放学回家，豆豆都会摇着尾巴来迎接我。",
+    "ocr_text": "我的小狗叫豆豆，它有一身雪白的毛，像一团棉花。它的眼睛圆圆的，像两颗黑葡萄。每天放学回家，豆豆都会摇着尾巴来迎接我。",
+    "score": 85,
+    "grade": "优秀",
+    "user_id": "user_001",
+    "is_favorite": true,
+    "annotated_text": [
+      {
+        "text": "我的小狗叫豆豆，它有一身",
+        "type": "normal",
+        "start_index": 0,
+        "end_index": 14
+      },
+      {
+        "text": "雪白的毛",
+        "type": "excellent",
+        "explanation": "用\"雪白\"来形容毛色，非常形象生动！",
+        "start_index": 14,
+        "end_index": 18
+      },
+      {
+        "text": "，像一团棉花。",
+        "type": "excellent",
+        "explanation": "把小狗比作棉花，这个比喻很可爱，让读者能想象出小狗毛茸茸的样子",
+        "start_index": 18,
+        "end_index": 26
+      },
+      {
+        "text": "它的眼睛圆圆的，像",
+        "type": "normal",
+        "start_index": 26,
+        "end_index": 36
+      },
+      {
+        "text": "两颗黑葡萄",
+        "type": "good",
+        "explanation": "用葡萄比喻眼睛很贴切，写出了小狗眼睛的圆润和明亮",
+        "start_index": 36,
+        "end_index": 42
+      },
+      {
+        "text": "。每天放学回家，豆豆都会",
+        "type": "normal",
+        "start_index": 42,
+        "end_index": 56
+      },
+      {
+        "text": "摇着尾巴来迎接我",
+        "type": "good",
+        "explanation": "这个动作描写很生动，表现了小狗的活泼和对主人的喜爱",
+        "start_index": 56,
+        "end_index": 64
+      }
+    ],
+    "errors": [],
+    "positives": [
+      {
+        "text": "雪白的毛",
+        "type": "excellent",
+        "explanation": "用\"雪白\"来形容毛色，非常形象生动！",
+        "start_index": 14,
+        "end_index": 18
+      },
+      {
+        "text": "像一团棉花",
+        "type": "excellent",
+        "explanation": "把小狗比作棉花，这个比喻很可爱，让读者能想象出小狗毛茸茸的样子",
+        "start_index": 19,
+        "end_index": 26
+      },
+      {
+        "text": "两颗黑葡萄",
+        "type": "good",
+        "explanation": "用葡萄比喻眼睛很贴切，写出了小狗眼睛的圆润和明亮",
+        "start_index": 36,
+        "end_index": 42
+      },
+      {
+        "text": "摇着尾巴来迎接我",
+        "type": "good",
+        "explanation": "这个动作描写很生动，表现了小狗的活泼和对主人的喜爱",
+        "start_index": 56,
+        "end_index": 64
+      }
+    ],
+    "optimizations": [],
+    "feedback": {
+      "strengths": ["比喻运用恰当，形象生动", "观察细致，抓住了小狗的特点", "表达了对小狗的喜爱之情"],
+      "improvements": ["可以增加更多动作描写", "可以写写小狗的叫声"],
+      "suggestions": ["试着写写小狗调皮时的样子", "可以加入和小狗互动的细节"]
+    },
+    "image_url": "https://example.com/essay_images/dog_essay.jpg",
+    "createdAt": 1726809600000,
+    "updatedAt": 1726809600000
+  },
+  {
+    "_id": "record_002",
+    "title": "一次难忘的旅行",
+    "original_text": "上个周末，爸爸妈妈带我去动物园玩。我看到了大象、老虎、狮子，还有可爱的熊猫。大象的鼻子很长，老虎的牙齿很尖，熊猫胖胖的，很可爱。",
+    "search_text": "一次难忘的旅行 上个周末，爸爸妈妈带我去动物园玩。我看到了大象、老虎、狮子，还有可爱的熊猫。大象的鼻子很长，老虎的牙齿很尖，熊猫胖胖的，很可爱。",
+    "ocr_text": "上个周末，爸爸妈妈带我去动物园玩。我看到了大象、老虎、狮子，还有可爱的熊猫。大象的鼻子很长，老虎的牙齿很尖，熊猫胖胖的，很可爱。",
+    "score": 78,
+    "grade": "良好",
+    "user_id": "user_001",
+    "is_favorite": false,
+    "annotated_text": [
+      {
+        "text": "上个周末，爸爸妈妈带我去",
+        "type": "normal",
+        "start_index": 0,
+        "end_index": 13
+      },
+      {
+        "text": "动物园",
+        "type": "normal",
+        "start_index": 13,
+        "end_index": 16
+      },
+      {
+        "text": "玩。我看到了大象、老虎、狮子，还有可爱的熊猫。",
+        "type": "normal",
+        "start_index": 16,
+        "end_index": 38
+      },
+      {
+        "text": "大象的鼻子很长",
+        "type": "good",
+        "explanation": "观察得很仔细，抓住了大象的特点",
+        "start_index": 38,
+        "end_index": 45
+      },
+      {
+        "text": "，老虎的牙齿很尖",
+        "type": "good",
+        "explanation": "用\"很尖\"形容老虎的牙齿，很准确",
+        "start_index": 45,
+        "end_index": 53
+      },
+      {
+        "text": "，熊猫",
+        "type": "normal",
+        "start_index": 53,
+        "end_index": 56
+      },
+      {
+        "text": "胖胖的，很可爱",
+        "type": "good",
+        "explanation": "\"胖胖的\"这个词用得很好，写出了熊猫的可爱模样",
+        "start_index": 56,
+        "end_index": 63
+      }
+    ],
+    "errors": [],
+    "positives": [
+      {
+        "text": "大象的鼻子很长",
+        "type": "good",
+        "explanation": "观察得很仔细，抓住了大象的特点",
+        "start_index": 38,
+        "end_index": 45
+      },
+      {
+        "text": "老虎的牙齿很尖",
+        "type": "good",
+        "explanation": "用\"很尖\"形容老虎的牙齿，很准确",
+        "start_index": 46,
+        "end_index": 53
+      },
+      {
+        "text": "胖胖的，很可爱",
+        "type": "good",
+        "explanation": "\"胖胖的\"这个词用得很好，写出了熊猫的可爱模样",
+        "start_index": 56,
+        "end_index": 63
+      }
+    ],
+    "optimizations": [
+      {
+        "text": "吃了好多好吃的食物",
+        "type": "optimize",
+        "suggestion": "可以具体写一写吃了什么食物，这样会更生动",
+        "explanation": "比如\"吃了妈妈做的三明治、新鲜的水果和香甜的果汁\"会更有画面感",
+        "start_index": 67,
+        "end_index": 77
+      }
+    ],
+    "feedback": {
+      "strengths": ["按顺序写了看到的动物", "能抓住动物的特点来写"],
+      "improvements": ["可以增加更多细节描写", "可以写写自己的感受"],
+      "suggestions": ["试着写写动物的动作", "可以加入和动物互动的情节"]
+    },
+    "image_url": "https://example.com/essay_images/zoo_essay.jpg",
+    "createdAt": 1726723200000,
+    "updatedAt": 1726723200000
+  },
+  {
+    "_id": "record_003",
+    "title": "秋天的校园",
+    "original_text": "秋天来了，我们的校园变成了金色的海洋。操场上的银杏树穿上了金黄色的外衣，风一吹，叶子像蝴蝶一样飞舞。同学们在落叶中奔跑，发出沙沙的响声，像在演奏一首秋天的歌。",
+    "search_text": "秋天的校园 秋天来了，我们的校园变成了金色的海洋。操场上的银杏树穿上了金黄色的外衣，风一吹，叶子像蝴蝶一样飞舞。同学们在落叶中奔跑，发出沙沙的响声，像在演奏一首秋天的歌。",
+    "ocr_text": "秋天来了，我们的校园变成了金色的海洋。操场上的银杏树穿上了金黄色的外衣，风一吹，叶子像蝴蝶一样飞舞。同学们在落叶中奔跑，发出沙沙的响声，像在演奏一首秋天的歌。",
+    "score": 92,
+    "grade": "优秀",
+    "user_id": "user_001",
+    "is_favorite": true,
+    "annotated_text": [
+      {
+        "text": "秋天来了，我们的校园变成了",
+        "type": "normal",
+        "start_index": 0,
+        "end_index": 15
+      },
+      {
+        "text": "金色的海洋",
+        "type": "excellent",
+        "explanation": "这个比喻太美了！把秋天的校园比作金色的海洋，很有诗意",
+        "start_index": 15,
+        "end_index": 21
+      },
+      {
+        "text": "。操场上的银杏树穿上了",
+        "type": "normal",
+        "start_index": 21,
+        "end_index": 32
+      },
+      {
+        "text": "金黄色的外衣",
+        "type": "excellent",
+        "explanation": "用\"穿上外衣\"来形容树叶变色，这是拟人的写法，很生动",
+        "start_index": 32,
+        "end_index": 38
+      },
+      {
+        "text": "，风一吹，叶子像",
+        "type": "normal",
+        "start_index": 38,
+        "end_index": 47
+      },
+      {
+        "text": "蝴蝶一样飞舞",
+        "type": "excellent",
+        "explanation": "把落叶比作飞舞的蝴蝶，这个比喻既形象又优美",
+        "start_index": 47,
+        "end_index": 54
+      },
+      {
+        "text": "。同学们在落叶中奔跑，发出",
+        "type": "normal",
+        "start_index": 54,
+        "end_index": 66
+      },
+      {
+        "text": "沙沙的响声",
+        "type": "good",
+        "explanation": "用声音描写增加了画面的生动感",
+        "start_index": 66,
+        "end_index": 71
+      },
+      {
+        "text": "，像在",
+        "type": "normal",
+        "start_index": 71,
+        "end_index": 75
+      },
+      {
+        "text": "演奏一首秋天的歌",
+        "type": "excellent",
+        "explanation": "这个结尾太美了！把秋天的声音比作一首歌，很有想象力",
+        "start_index": 75,
+        "end_index": 83
+      }
+    ],
+    "errors": [],
+    "positives": [
+      {
+        "text": "金色的海洋",
+        "type": "excellent",
+        "explanation": "这个比喻太美了！把秋天的校园比作金色的海洋，很有诗意",
+        "start_index": 15,
+        "end_index": 21
+      },
+      {
+        "text": "金黄色的外衣",
+        "type": "excellent",
+        "explanation": "用\"穿上外衣\"来形容树叶变色，这是拟人的写法，很生动",
+        "start_index": 32,
+        "end_index": 38
+      },
+      {
+        "text": "蝴蝶一样飞舞",
+        "type": "excellent",
+        "explanation": "把落叶比作飞舞的蝴蝶，这个比喻既形象又优美",
+        "start_index": 47,
+        "end_index": 54
+      },
+      {
+        "text": "沙沙的响声",
+        "type": "good",
+        "explanation": "用声音描写增加了画面的生动感",
+        "start_index": 66,
+        "end_index": 71
+      },
+      {
+        "text": "演奏一首秋天的歌",
+        "type": "excellent",
+        "explanation": "这个结尾太美了！把秋天的声音比作一首歌，很有想象力",
+        "start_index": 75,
+        "end_index": 83
+      }
+    ],
+    "optimizations": [],
+    "feedback": {
+      "strengths": ["比喻和拟人运用出色", "调动了多种感官描写", "语言优美，富有诗意", "结构完整，首尾呼应"],
+      "improvements": ["可以写写教学楼的变化", "可以增加同学们的活动"],
+      "suggestions": ["试着写写秋天的气味", "可以加入对秋天的感受"]
+    },
+    "image_url": "https://example.com/essay_images/autumn_campus.jpg",
+    "createdAt": 1726636800000,
+    "updatedAt": 1726636800000
+  },
+  {
+    "_id": "record_004",
+    "title": "我的妈妈",
+    "original_text": "我的妈妈有一双温柔的眼睛，总是用关爱的目光看着我。她的手很巧，会给我织漂亮的毛衣。每天放学回家，妈妈都会给我准备热腾腾的饭菜。",
+    "search_text": "我的妈妈 我的妈妈有一双温柔的眼睛，总是用关爱的目光看着我。她的手很巧，会给我织漂亮的毛衣。每天放学回家，妈妈都会给我准备热腾腾的饭菜。",
+    "ocr_text": "我的妈妈有一双温柔的眼睛，总是用关爱的目光看着我。她的手很巧，会给我织漂亮的毛衣。每天放学回家，妈妈都会给我准备热腾腾的饭菜。",
+    "score": 88,
+    "grade": "优秀",
+    "user_id": "user_002",
+    "is_favorite": false,
+    "annotated_text": [
+      {
+        "text": "我的妈妈有一双",
+        "type": "normal",
+        "start_index": 0,
+        "end_index": 8
+      },
+      {
+        "text": "温柔的眼睛",
+        "type": "good",
+        "explanation": "用\"温柔\"形容妈妈的眼睛，很贴切地表现了妈妈的爱",
+        "start_index": 8,
+        "end_index": 13
+      },
+      {
+        "text": "，总是用",
+        "type": "normal",
+        "start_index": 13,
+        "end_index": 17
+      },
+      {
+        "text": "关爱的目光",
+        "type": "excellent",
+        "explanation": "\"关爱的目光\"这个短语用得很好，体现了妈妈对孩子的关心",
+        "start_index": 17,
+        "end_index": 22
+      },
+      {
+        "text": "看着我。她的手很巧，会给我织",
+        "type": "normal",
+        "start_index": 22,
+        "end_index": 38
+      },
+      {
+        "text": "漂亮的毛衣",
+        "type": "good",
+        "explanation": "通过具体事例表现妈妈的巧手，很生动",
+        "start_index": 38,
+        "end_index": 44
+      },
+      {
+        "text": "。每天放学回家，妈妈都会给我准备",
+        "type": "normal",
+        "start_index": 44,
+        "end_index": 60
+      },
+      {
+        "text": "热腾腾的饭菜",
+        "type": "good",
+        "explanation": "用\"热腾腾\"形容饭菜，让人感受到家的温暖",
+        "start_index": 60,
+        "end_index": 66
+      }
+    ],
+    "errors": [],
+    "positives": [
+      {
+        "text": "温柔的眼睛",
+        "type": "good",
+        "explanation": "用\"温柔\"形容妈妈的眼睛，很贴切地表现了妈妈的爱",
+        "start_index": 8,
+        "end_index": 13
+      },
+      {
+        "text": "关爱的目光",
+        "type": "excellent",
+        "explanation": "\"关爱的目光\"这个短语用得很好，体现了妈妈对孩子的关心",
+        "start_index": 17,
+        "end_index": 22
+      },
+      {
+        "text": "漂亮的毛衣",
+        "type": "good",
+        "explanation": "通过具体事例表现妈妈的巧手，很生动",
+        "start_index": 38,
+        "end_index": 44
+      },
+      {
+        "text": "热腾腾的饭菜",
+        "type": "good",
+        "explanation": "用\"热腾腾\"形容饭菜，让人感受到家的温暖",
+        "start_index": 60,
+        "end_index": 66
+      }
+    ],
+    "optimizations": [],
+    "feedback": {
+      "strengths": ["情感真挚，描写细腻", "通过具体事例表现妈妈的爱", "语言朴实感人"],
+      "improvements": ["可以增加更多外貌描写", "可以写写妈妈的性格特点"],
+      "suggestions": ["可以写写妈妈工作时的样子", "可以加入和妈妈互动的细节"]
+    },
+    "image_url": "https://example.com/essay_images/mom_essay.jpg",
+    "createdAt": 1726550400000,
+    "updatedAt": 1726550400000
+  },
+  {
+    "_id": "record_005",
+    "title": "美丽的公园",
+    "original_text": "周末，我和家人去了美丽的公园。公园里绿树成荫，鲜花盛开，蝴蝶在花丛中飞舞。我们在草地上野餐，吃着美味的食物，享受着温暖的阳光。",
+    "search_text": "美丽的公园 周末，我和家人去了美丽的公园。公园里绿树成荫，鲜花盛开，蝴蝶在花丛中飞舞。我们在草地上野餐，吃着美味的食物，享受着温暖的阳光。",
+    "ocr_text": "周末，我和家人去了美丽的公园。公园里绿树成荫，鲜花盛开，蝴蝶在花丛中飞舞。我们在草地上野餐，吃着美味的食物，享受着温暖的阳光。",
+    "score": 90,
+    "grade": "优秀",
+    "user_id": "user_002",
+    "is_favorite": true,
+    "annotated_text": [
+      {
+        "text": "周末，我和家人去了",
+        "type": "normal",
+        "start_index": 0,
+        "end_index": 10
+      },
+      {
+        "text": "美丽的公园",
+        "type": "good",
+        "explanation": "开头点题，简洁明了",
+        "start_index": 10,
+        "end_index": 15
+      },
+      {
+        "text": "。公园里",
+        "type": "normal",
+        "start_index": 15,
+        "end_index": 19
+      },
+      {
+        "text": "绿树成荫",
+        "type": "excellent",
+        "explanation": "这个成语用得很好，形象地描绘了公园的景色",
+        "start_index": 19,
+        "end_index": 23
+      },
+      {
+        "text": "，",
+        "type": "normal",
+        "start_index": 23,
+        "end_index": 24
+      },
+      {
+        "text": "鲜花盛开",
+        "type": "good",
+        "explanation": "用\"盛开\"形容鲜花，很有生机",
+        "start_index": 24,
+        "end_index": 28
+      },
+      {
+        "text": "，",
+        "type": "normal",
+        "start_index": 28,
+        "end_index": 29
+      },
+      {
+        "text": "蝴蝶在花丛中飞舞",
+        "type": "excellent",
+        "explanation": "动态描写很生动，让画面活了起来",
+        "start_index": 29,
+        "end_index": 38
+      },
+      {
+        "text": "。我们在草地上",
+        "type": "normal",
+        "start_index": 38,
+        "end_index": 46
+      },
+      {
+        "text": "野餐",
+        "type": "good",
+        "explanation": "具体的活动描写，增加了生活气息",
+        "start_index": 46,
+        "end_index": 48
+      },
+      {
+        "text": "，吃着",
+        "type": "normal",
+        "start_index": 48,
+        "end_index": 52
+      },
+      {
+        "text": "美味的食物",
+        "type": "good",
+        "explanation": "用\"美味\"形容食物，让人感受到快乐",
+        "start_index": 52,
+        "end_index": 57
+      },
+      {
+        "text": "，享受着",
+        "type": "normal",
+        "start_index": 57,
+        "end_index": 62
+      },
+      {
+        "text": "温暖的阳光",
+        "type": "excellent",
+        "explanation": "结尾用\"温暖的阳光\"，营造出了温馨的氛围",
+        "start_index": 62,
+        "end_index": 67
+      }
+    ],
+    "errors": [],
+    "positives": [
+      {
+        "text": "绿树成荫",
+        "type": "excellent",
+        "explanation": "这个成语用得很好，形象地描绘了公园的景色",
+        "start_index": 19,
+        "end_index": 23
+      },
+      {
+        "text": "蝴蝶在花丛中飞舞",
+        "type": "excellent",
+        "explanation": "动态描写很生动，让画面活了起来",
+        "start_index": 29,
+        "end_index": 38
+      },
+      {
+        "text": "温暖的阳光",
+        "type": "excellent",
+        "explanation": "结尾用\"温暖的阳光\"，营造出了温馨的氛围",
+        "start_index": 62,
+        "end_index": 67
+      }
+    ],
+    "optimizations": [],
+    "feedback": {
+      "strengths": ["景色描写优美", "动静结合，画面生动", "情感真挚，氛围温馨"],
+      "improvements": ["可以增加更多感官描写", "可以写写公园里的声音"],
+      "suggestions": ["可以写写公园里的其他游客", "可以加入一些特别的发现"]
+    },
+    "image_url": "https://example.com/essay_images/park_essay.jpg",
+    "createdAt": 1726464000000,
+    "updatedAt": 1726464000000
+  },
+  {
+    "_id": "record_006",
+    "title": "我的好朋友",
+    "original_text": "我有一个好朋友，他叫小明。小明有一双明亮的眼睛，总是闪烁着智慧的光芒。他很乐于助人，经常帮助同学解决学习上的困难。我们一起上学，一起玩耍，分享快乐。",
+    "search_text": "我的好朋友 我有一个好朋友，他叫小明。小明有一双明亮的眼睛，总是闪烁着智慧的光芒。他很乐于助人，经常帮助同学解决学习上的困难。我们一起上学，一起玩耍，分享快乐。",
+    "ocr_text": "我有一个好朋友，他叫小明。小明有一双明亮的眼睛，总是闪烁着智慧的光芒。他很乐于助人，经常帮助同学解决学习上的困难。我们一起上学，一起玩耍，分享快乐。",
+    "score": 82,
+    "grade": "优秀",
+    "user_id": "user_003",
+    "is_favorite": false,
+    "annotated_text": [
+      {
+        "text": "我有一个好朋友，他叫",
+        "type": "normal",
+        "start_index": 0,
+        "end_index": 12
+      },
+      {
+        "text": "小明",
+        "type": "normal",
+        "start_index": 12,
+        "end_index": 14
+      },
+      {
+        "text": "。小明有一双",
+        "type": "normal",
+        "start_index": 14,
+        "end_index": 20
+      },
+      {
+        "text": "明亮的眼睛",
+        "type": "good",
+        "explanation": "用\"明亮\"形容眼睛，表现了小明的精神",
+        "start_index": 20,
+        "end_index": 25
+      },
+      {
+        "text": "，总是",
+        "type": "normal",
+        "start_index": 25,
+        "end_index": 29
+      },
+      {
+        "text": "闪烁着智慧的光芒",
+        "type": "excellent",
+        "explanation": "这个比喻很生动，表现了小明的聪明",
+        "start_index": 29,
+        "end_index": 38
+      },
+      {
+        "text": "。他很",
+        "type": "normal",
+        "start_index": 38,
+        "end_index": 42
+      },
+      {
+        "text": "乐于助人",
+        "type": "good",
+        "explanation": "用成语概括小明的品质，很准确",
+        "start_index": 42,
+        "end_index": 46
+      },
+      {
+        "text": "，经常帮助同学解决学习上的困难。",
+        "type": "normal",
+        "start_index": 46,
+        "end_index": 65
+      },
+      {
+        "text": "我们一起上学，一起玩耍，分享快乐",
+        "type": "good",
+        "explanation": "用排比句式，表现了友谊的美好",
+        "start_index": 65,
+        "end_index": 80
+      }
+    ],
+    "errors": [],
+    "positives": [
+      {
+        "text": "明亮的眼睛",
+        "type": "good",
+        "explanation": "用\"明亮\"形容眼睛，表现了小明的精神",
+        "start_index": 20,
+        "end_index": 25
+      },
+      {
+        "text": "闪烁着智慧的光芒",
+        "type": "excellent",
+        "explanation": "这个比喻很生动，表现了小明的聪明",
+        "start_index": 29,
+        "end_index": 38
+      },
+      {
+        "text": "乐于助人",
+        "type": "good",
+        "explanation": "用成语概括小明的品质，很准确",
+        "start_index": 42,
+        "end_index": 46
+      },
+      {
+        "text": "我们一起上学，一起玩耍，分享快乐",
+        "type": "good",
+        "explanation": "用排比句式，表现了友谊的美好",
+        "start_index": 65,
+        "end_index": 80
+      }
+    ],
+    "optimizations": [],
+    "feedback": {
+      "strengths": ["人物形象生动", "通过具体事例表现品质", "语言流畅，情感真挚"],
+      "improvements": ["可以增加更多外貌描写", "可以写写小明的兴趣爱好"],
+      "suggestions": ["可以写写一起经历的趣事", "可以加入小明的家庭背景"]
+    },
+    "image_url": "https://example.com/essay_images/friend_essay.jpg",
+    "createdAt": 1726377600000,
+    "updatedAt": 1726377600000
+  }
+]
+  
