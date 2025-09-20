@@ -19,12 +19,12 @@
       "type": "String"
     },
     {
-      "name": "nick_name",
+      "name": "nickName",
       "title": "昵称",
       "type": "String"
     },
     {
-      "name": "avatar_url",
+      "name": "avatarUrl",
       "title": "头像URL",
       "type": "String"
     },
@@ -34,12 +34,12 @@
       "type": "String"
     },
     {
-      "name": "last_login_time",
+      "name": "lastLoginTime",
       "title": "最后登录时间",
       "type": "DateTime"
     },
     {
-      "name": "login_count",
+      "name": "loginCount",
       "title": "登录次数",
       "type": "Number"
     },
