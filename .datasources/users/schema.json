@@ -1,0 +1,75 @@
+
+{
+  "name": "users",
+  "displayName": "用户",
+  "description": "系统用户表",
+  "fields": [
+    {
+      "name": "_id",
+      "displayName": "用户ID",
+      "type": "string",
+      "required": true,
+      "primaryKey": true
+    },
+    {
+      "name": "username",
+      "displayName": "用户名",
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    {
+      "name": "password",
+      "displayName": "密码",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "name",
+      "displayName": "姓名",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "nickName",
+      "displayName": "昵称",
+      "type": "string"
+    },
+    {
+      "name": "avatarUrl",
+      "displayName": "头像URL",
+      "type": "string"
+    },
+    {
+      "name": "type",
+      "displayName": "用户类型",
+      "type": "string",
+      "enum": ["admin", "teacher", "student"],
+      "defaultValue": "student"
+    },
+    {
+      "name": "createdAt",
+      "displayName": "创建时间",
+      "type": "datetime",
+      "defaultValue": "now"
+    },
+    {
+      "name": "lastLoginTime",
+      "displayName": "最后登录时间",
+      "type": "datetime"
+    },
+    {
+      "name": "loginCount",
+      "displayName": "登录次数",
+      "type": "number",
+      "defaultValue": 0
+    }
+  ],
+  "indexes": [
+    {
+      "name": "username_index",
+      "fields": ["username"],
+      "unique": true
+    }
+  ]
+}

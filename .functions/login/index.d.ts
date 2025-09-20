@@ -1,24 +1,24 @@
 
-    interface LoginRequest {
-      username: string;
-      password: string;
-    }
+// 云函数类型定义
+export interface LoginRequest {
+  username: string
+  password: string
+}
 
-    interface LoginResponse {
-      code: number;
-      message: string;
-      data?: {
-        _id?: string;
-        username?: string;
-        email?: string;
-        [key: string]: any;
-      };
-    }
+export interface UserInfo {
+  _id: string
+  username: string
+  name: string
+  nickName: string
+  avatarUrl?: string
+  type: 'admin' | 'teacher' | 'student'
+  createdAt: Date
+  lastLoginTime: Date
+}
 
-    interface CloudFunctionEvent {
-      username: string;
-      password: string;
-    }
-
-    export declare function main(event: CloudFunctionEvent, context: any): Promise<LoginResponse>;
-  
+export interface LoginResponse {
+  code: number
+  message: string
+  data: UserInfo | null
+  error?: string
+}

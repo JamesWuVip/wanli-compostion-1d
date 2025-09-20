@@ -1,0 +1,39 @@
+
+[
+  {
+    "_id": "admin_001",
+    "username": "admin",
+    "password": "123456",
+    "name": "管理员",
+    "nickName": "超级管理员",
+    "avatarUrl": "https://ui-avatars.com/api/?name=管理员&background=0ea5e9&color=fff",
+    "type": "admin",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "lastLoginTime": null,
+    "loginCount": 0
+  },
+  {
+    "_id": "student_001",
+    "username": "student",
+    "password": "123456",
+    "name": "测试学生",
+    "nickName": "小明同学",
+    "avatarUrl": "https://ui-avatars.com/api/?name=小明&background=10b981&color=fff",
+    "type": "student",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "lastLoginTime": null,
+    "loginCount": 0
+  },
+  {
+    "_id": "teacher_001",
+    "username": "teacher",
+    "password": "123456",
+    "name": "测试老师",
+    "nickName": "张老师",
+    "avatarUrl": "https://ui-avatars.com/api/?name=张老师&background=f59e0b&color=fff",
+    "type": "teacher",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "lastLoginTime": null,
+    "loginCount": 0
+  }
+]
