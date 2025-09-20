@@ -1,75 +1,73 @@
 
 {
   "name": "users",
-  "displayName": "用户",
-  "description": "系统用户表",
-  "fields": [
-    {
-      "name": "_id",
-      "displayName": "用户ID",
-      "type": "string",
-      "required": true,
-      "primaryKey": true
-    },
+  "title": "用户",
+  "schemas": [
     {
       "name": "username",
-      "displayName": "用户名",
-      "type": "string",
-      "required": true,
-      "unique": true
+      "title": "用户名",
+      "type": "String"
     },
     {
       "name": "password",
-      "displayName": "密码",
-      "type": "string",
-      "required": true
+      "title": "密码",
+      "type": "String"
     },
     {
       "name": "name",
-      "displayName": "姓名",
-      "type": "string",
-      "required": true
+      "title": "姓名",
+      "type": "String"
     },
     {
-      "name": "nickName",
-      "displayName": "昵称",
-      "type": "string"
+      "name": "nick_name",
+      "title": "昵称",
+      "type": "String"
     },
     {
-      "name": "avatarUrl",
-      "displayName": "头像URL",
-      "type": "string"
+      "name": "avatar_url",
+      "title": "头像URL",
+      "type": "String"
     },
     {
       "name": "type",
-      "displayName": "用户类型",
-      "type": "string",
-      "enum": ["admin", "teacher", "student"],
-      "defaultValue": "student"
+      "title": "用户类型",
+      "type": "String"
     },
     {
-      "name": "createdAt",
-      "displayName": "创建时间",
-      "type": "datetime",
-      "defaultValue": "now"
+      "name": "last_login_time",
+      "title": "最后登录时间",
+      "type": "DateTime"
     },
     {
-      "name": "lastLoginTime",
-      "displayName": "最后登录时间",
-      "type": "datetime"
+      "name": "login_count",
+      "title": "登录次数",
+      "type": "Number"
     },
     {
-      "name": "loginCount",
-      "displayName": "登录次数",
-      "type": "number",
-      "defaultValue": 0
-    }
-  ],
-  "indexes": [
+      "name": "openid",
+      "title": "微信OpenID",
+      "type": "String"
+    },
     {
-      "name": "username_index",
-      "fields": ["username"],
-      "unique": true
+      "name": "unionid",
+      "title": "微信UnionID",
+      "type": "String"
+    },
+    {
+      "name": "phone",
+      "title": "手机号",
+      "type": "String"
+    },
+    {
+      "name": "email",
+      "title": "邮箱",
+      "type": "Email"
+    },
+    {
+      "name": "status",
+      "title": "状态",
+      "type": "String"
     }
   ]
 }
+  

@@ -63,18 +63,16 @@ export default function Login(props) {
     }
   };
 
-  // 使用云函数进行用户认证
+  // 使用云函数进行用户认证 - 完全对齐云函数接口
   const authenticateWithCloudFunction = async (username, password) => {
     try {
       if (!isOnline) {
-        throw new Error('网络连接不可用，请检查网络');
+        throw new Error('网络连接不可用，请检查您的网络设置');
       }
       if (cloudFunctionStatus === 'unavailable') {
-        throw new Error('登录服务暂不可用，请联系管理员');
+        throw new Error('登录服务暂时无法访问，请稍后重试或联系管理员');
       }
-      console.log('调用云函数 login:', {
-        username
-      });
+      console.log('正在调用云函数 login...');
       const result = await $w.cloud.callFunction({
         name: 'login',
         data: {
@@ -82,36 +80,63 @@ export default function Login(props) {
           password: password.trim()
         }
       });
-      console.log('云函数返回:', result);
+      console.log('云函数返回结果:', result);
 
-      // 验证返回格式
-      if (!result || typeof result.code === 'undefined') {
-        throw new Error('服务器返回格式错误');
+      // 严格验证返回格式，与云函数保持一致
+      if (!result || typeof result !== 'object') {
+        throw new Error('服务器响应异常，请稍后重试');
       }
+
+      // 处理云函数返回的标准格式
       if (result.code === 0 && result.data) {
+        // 成功状态，与云函数返回格式完全一致
         return {
           success: true,
-          user: result.data
+          user: result.data,
+          message: result.message || '登录成功'
         };
-      } else {
+      } else if (result.code === 400) {
+        // 参数错误
         return {
           success: false,
-          error: result.message || '用户名或密码错误'
+          error: result.message || '输入信息有误，请检查后重试'
+        };
+      } else if (result.code === 401) {
+        // 认证失败
+        return {
+          success: false,
+          error: result.message || '用户名或密码错误，请重新输入'
+        };
+      } else if (result.code === 500) {
+        // 服务器错误
+        return {
+          success: false,
+          error: '服务器繁忙，请稍后重试'
+        };
+      } else {
+        // 其他错误
+        return {
+          success: false,
+          error: result.message || '登录失败，请稍后重试'
         };
       }
     } catch (error) {
-      console.error('云函数调用错误:', error);
+      console.error('云函数调用异常:', error);
 
-      // 提供详细的错误信息
-      let errorMessage = '登录失败';
+      // 友好的错误提示文案
+      let errorMessage = '登录失败，请稍后重试';
       if (error.message.includes('FUNCTION_NOT_FOUND')) {
-        errorMessage = '登录服务未部署，请联系管理员';
+        errorMessage = '登录服务未正确部署，请联系系统管理员';
       } else if (error.message.includes('timeout')) {
-        errorMessage = '请求超时，请检查网络';
+        errorMessage = '网络连接超时，请检查网络后重试';
       } else if (error.message.includes('网络')) {
-        errorMessage = '网络连接异常';
+        errorMessage = '网络连接异常，请检查您的网络设置';
+      } else if (error.message.includes('ECONNREFUSED')) {
+        errorMessage = '无法连接到服务器，请稍后重试';
+      } else if (error.message.includes('服务器')) {
+        errorMessage = '服务器暂时不可用，请稍后重试';
       } else {
-        errorMessage = error.message || '登录失败，请重试';
+        errorMessage = error.message || '登录过程中出现错误，请稍后重试';
       }
       return {
         success: false,
@@ -127,27 +152,32 @@ export default function Login(props) {
     try {
       const result = await authenticateWithCloudFunction(data.username, data.password);
       if (result.success) {
-        // 保存用户信息
+        // 保存用户信息到本地存储
         localStorage.setItem('userId', result.user._id);
         localStorage.setItem('userInfo', JSON.stringify(result.user));
         localStorage.setItem('loginTime', new Date().toISOString());
+
+        // 显示成功提示
         toast({
           title: '登录成功',
-          description: `欢迎回来，${result.user.nickName || result.user.name}`,
-          duration: 2000
+          description: `欢迎回来，${result.user.nickName || result.user.name || result.user.username}`,
+          duration: 2000,
+          className: 'bg-green-50 border-green-200'
         });
 
-        // 跳转到首页
+        // 确保跳转到首页
         setTimeout(() => {
           $w.utils.navigateTo({
             pageId: 'index',
             params: {
               from: 'login',
-              userId: result.user._id
+              userId: result.user._id,
+              username: result.user.username
             }
           });
         }, 1500);
       } else {
+        // 显示具体的错误信息
         setLoginError(result.error);
         toast({
           title: '登录失败',
@@ -157,11 +187,12 @@ export default function Login(props) {
         });
       }
     } catch (error) {
-      console.error('登录错误:', error);
-      setLoginError(error.message || '登录失败，请重试');
+      console.error('登录过程异常:', error);
+      const errorMsg = '登录过程中出现意外错误，请刷新页面后重试';
+      setLoginError(errorMsg);
       toast({
         title: '登录失败',
-        description: error.message || '请检查网络连接后重试',
+        description: errorMsg,
         variant: 'destructive',
         duration: 4000
       });
@@ -239,6 +270,14 @@ export default function Login(props) {
                   minLength: {
                     value: 3,
                     message: '用户名至少3个字符'
+                  },
+                  maxLength: {
+                    value: 20,
+                    message: '用户名最多20个字符'
+                  },
+                  pattern: {
+                    value: /^[a-zA-Z0-9_-]+$/,
+                    message: '用户名只能包含字母、数字、下划线和横线'
                   }
                 })} placeholder="请输入用户名" className="pl-10 pr-4 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading} />
                 </div>
@@ -256,6 +295,10 @@ export default function Login(props) {
                   minLength: {
                     value: 6,
                     message: '密码至少6个字符'
+                  },
+                  maxLength: {
+                    value: 30,
+                    message: '密码最多30个字符'
                   }
                 })} type={showPassword ? 'text' : 'password'} placeholder="请输入密码" className="pl-10 pr-12 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" disabled={loading}>
@@ -269,11 +312,14 @@ export default function Login(props) {
                   <AlertDescription>{loginError}</AlertDescription>
                 </Alert>}
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg" disabled={loading}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled={loading}>
                 {loading ? <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     登录中...
-                  </> : '登录'}
+                  </> : <>
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    登录
+                  </>}
               </Button>
             </form>
 
@@ -281,13 +327,13 @@ export default function Login(props) {
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-3">快速测试账号：</p>
                 <div className="grid grid-cols-1 gap-2">
-                  <button type="button" onClick={() => fillTestAccount('admin', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md" disabled={loading}>
+                  <button type="button" onClick={() => fillTestAccount('admin', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading}>
                     管理员: admin / 123456
                   </button>
-                  <button type="button" onClick={() => fillTestAccount('student', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md" disabled={loading}>
+                  <button type="button" onClick={() => fillTestAccount('student', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading}>
                     学生: student / 123456
                   </button>
-                  <button type="button" onClick={() => fillTestAccount('teacher', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md" disabled={loading}>
+                  <button type="button" onClick={() => fillTestAccount('teacher', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading}>
                     老师: teacher / 123456
                   </button>
                 </div>
