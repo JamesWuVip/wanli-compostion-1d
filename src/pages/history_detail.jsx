@@ -27,20 +27,14 @@ export default function HistoryDetail(props) {
     if (!data || typeof data !== 'object') {
       throw new Error('记录数据格式错误');
     }
-
-    // 验证必要字段
     const requiredFields = ['_id', 'user_id', 'title', 'original_text', 'score', 'grade', 'createdAt'];
     const missingFields = requiredFields.filter(field => data[field] === undefined || data[field] === null);
     if (missingFields.length > 0) {
       throw new Error(`记录缺少必要字段: ${missingFields.join(', ')}`);
     }
-
-    // 验证数据类型
     if (typeof data.score !== 'number' || data.score < 0) {
       throw new Error('评分数据无效');
     }
-
-    // 验证数组字段
     const arrayFields = ['annotated_text', 'errors', 'positives', 'optimizations'];
     arrayFields.forEach(field => {
       if (data[field] && !Array.isArray(data[field])) {
@@ -111,18 +105,12 @@ export default function HistoryDetail(props) {
           }
         }
       });
-
-      // 验证返回数据
       if (!result) {
         throw new Error('记录不存在');
       }
-
-      // 验证数据完整性
       validateRecordData(result);
       setRecord(result);
       setIsFavorite(result.is_favorite || false);
-
-      // 重置重试计数
       setRetryCount(0);
     } catch (error) {
       console.error('加载记录错误:', error);
@@ -304,6 +292,13 @@ export default function HistoryDetail(props) {
             </div>
           </div>
           ` : ''}
+          
+          ${record.image_url ? `
+          <div class="section">
+            <h2>原始图片</h2>
+            <img src="${record.image_url}" alt="作文图片" style="max-width: 500px; border: 1px solid #ddd; border-radius: 5px;" />
+          </div>
+          ` : ''}
         </body>
       </html>
     `;
@@ -468,7 +463,6 @@ export default function HistoryDetail(props) {
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="space-y-6">
-          {/* 标题和评分 */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -489,7 +483,6 @@ export default function HistoryDetail(props) {
             </CardHeader>
           </Card>
 
-          {/* 原文 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -504,7 +497,6 @@ export default function HistoryDetail(props) {
             </CardContent>
           </Card>
 
-          {/* OCR识别文本 */}
           {record.ocr_text && record.ocr_text !== record.original_text && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -519,7 +511,6 @@ export default function HistoryDetail(props) {
             </CardContent>
           </Card>}
 
-          {/* 批改标注 */}
           {record.annotated_text && record.annotated_text.length > 0 && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -537,7 +528,6 @@ export default function HistoryDetail(props) {
             </CardContent>
           </Card>}
 
-          {/* 错别字 */}
           {record.errors && record.errors.length > 0 && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -557,7 +547,6 @@ export default function HistoryDetail(props) {
             </CardContent>
           </Card>}
 
-          {/* 优点 */}
           {record.positives && record.positives.length > 0 && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -575,7 +564,6 @@ export default function HistoryDetail(props) {
             </CardContent>
           </Card>}
 
-          {/* 优化建议 */}
           {record.optimizations && record.optimizations.length > 0 && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -593,7 +581,6 @@ export default function HistoryDetail(props) {
             </CardContent>
           </Card>}
 
-          {/* 总体评价 */}
           {record.feedback && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -611,7 +598,6 @@ export default function HistoryDetail(props) {
             </CardContent>
           </Card>}
 
-          {/* 原始图片 */}
           {record.image_url && <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
