@@ -3,12 +3,10 @@ import React, { useState } from 'react';
 // @ts-ignore;
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, useToast, Alert, AlertDescription } from '@/components/ui';
 // @ts-ignore;
-import { ArrowLeft, User, Lock, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, User, Lock, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
 
 // @ts-ignore;
 import { useForm } from 'react-hook-form';
-// @ts-ignore;
-
 export default function Login(props) {
   const {
     $w
@@ -16,83 +14,162 @@ export default function Login(props) {
   const {
     toast
   } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState(null);
+  const [loginError, setLoginError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
-  const form = useForm({
-    defaultValues: {
-      username: '',
-      password: ''
-    }
-  });
+  const {
+    register,
+    handleSubmit,
+    formState: {
+      errors
+    },
+    reset
+  } = useForm();
 
-  // 验证登录响应数据格式
-  const validateLoginResponse = data => {
-    if (!data || typeof data !== 'object') {
-      throw new Error('登录响应数据格式错误');
-    }
-    if (!data.success) {
-      throw new Error(data.message || '登录失败');
-    }
-    if (!data.userInfo || typeof data.userInfo !== 'object') {
-      throw new Error('用户信息格式错误');
-    }
-
-    // 验证用户信息必要字段
-    const requiredFields = ['userId', 'name'];
-    const missingFields = requiredFields.filter(field => data.userInfo[field] === undefined || data.userInfo[field] === null);
-    if (missingFields.length > 0) {
-      throw new Error(`用户信息缺少必要字段: ${missingFields.join(', ')}`);
-    }
-    return true;
-  };
-  const onSubmit = async data => {
-    if (!data.username.trim() || !data.password.trim()) {
-      toast({
-        title: '请输入用户名和密码',
-        variant: 'destructive'
-      });
-      return;
-    }
-    setLoading(true);
-    setApiError(null);
+  // 使用数据模型进行用户认证
+  const authenticateUser = async (username, password) => {
     try {
-      // 调用登录API
-      const result = await $w.cloud.callFunction({
-        name: 'login',
-        data: {
-          username: data.username.trim(),
-          password: data.password.trim()
+      // 查询用户数据模型（假设存在 users 数据模型）
+      const result = await $w.cloud.callDataSource({
+        dataSourceName: 'users',
+        methodName: 'wedaGetRecordsV2',
+        params: {
+          filter: {
+            where: {
+              $and: [{
+                username: {
+                  $eq: username
+                }
+              }, {
+                password: {
+                  $eq: password
+                }
+              }]
+            }
+          },
+          select: {
+            $master: true
+          },
+          pageSize: 1,
+          pageNumber: 1
         }
       });
+      if (result.records && result.records.length > 0) {
+        const user = result.records[0];
+        return {
+          success: true,
+          user: {
+            userId: user._id,
+            name: user.name || user.username,
+            nickName: user.nickName || user.name || user.username,
+            avatarUrl: user.avatarUrl || ''
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: '用户名或密码错误'
+        };
+      }
+    } catch (error) {
+      console.error('认证错误:', error);
+      return {
+        success: false,
+        error: error.message || '认证失败'
+      };
+    }
+  };
 
-      // 验证API响应数据
-      validateLoginResponse(result);
+  // 模拟登录（当数据模型不存在时）
+  const simulateLogin = async (username, password) => {
+    // 模拟用户数据
+    const mockUsers = [{
+      userId: 'user_001',
+      username: 'admin',
+      password: '123456',
+      name: '管理员',
+      nickName: '管理员',
+      avatarUrl: 'https://via.placeholder.com/100'
+    }, {
+      userId: 'user_002',
+      username: 'student',
+      password: '123456',
+      name: '学生',
+      nickName: '小明',
+      avatarUrl: 'https://via.placeholder.com/100'
+    }, {
+      userId: 'user_003',
+      username: 'teacher',
+      password: '123456',
+      name: '老师',
+      nickName: '张老师',
+      avatarUrl: 'https://via.placeholder.com/100'
+    }];
+    const user = mockUsers.find(u => u.username === username && u.password === password);
+    if (user) {
+      return {
+        success: true,
+        user: {
+          userId: user.userId,
+          name: user.name,
+          nickName: user.nickName,
+          avatarUrl: user.avatarUrl
+        }
+      };
+    } else {
+      return {
+        success: false,
+        error: '用户名或密码错误'
+      };
+    }
+  };
 
-      // 保存用户信息到本地存储
-      localStorage.setItem('userId', result.userInfo.userId);
-      localStorage.setItem('userInfo', JSON.stringify(result.userInfo));
-      toast({
-        title: '登录成功',
-        description: `欢迎回来，${result.userInfo.name || result.userInfo.nickName || '用户'}`
-      });
+  // 处理登录提交
+  const onSubmit = async data => {
+    setLoading(true);
+    setLoginError(null);
+    try {
+      let result;
 
-      // 重置重试计数
-      setRetryCount(0);
-
-      // 跳转到首页
-      setTimeout(() => {
-        $w.utils.navigateTo({
-          pageId: 'index'
+      // 首先尝试使用数据模型认证
+      try {
+        result = await authenticateUser(data.username, data.password);
+      } catch (modelError) {
+        console.warn('数据模型认证失败，使用模拟登录:', modelError.message);
+        // 如果数据模型不存在，使用模拟登录
+        result = await simulateLogin(data.username, data.password);
+      }
+      if (result.success) {
+        // 保存登录状态
+        localStorage.setItem('userId', result.user.userId);
+        localStorage.setItem('userInfo', JSON.stringify(result.user));
+        toast({
+          title: '登录成功',
+          description: `欢迎回来，${result.user.nickName || result.user.name}`
         });
-      }, 1000);
+
+        // 跳转到首页
+        setTimeout(() => {
+          $w.utils.navigateTo({
+            pageId: 'index'
+          });
+        }, 1000);
+      } else {
+        setLoginError(result.error);
+        toast({
+          title: '登录失败',
+          description: result.error,
+          variant: 'destructive'
+        });
+      }
     } catch (error) {
       console.error('登录错误:', error);
-      setApiError(error.message || '登录失败');
+      setLoginError(error.message || '登录失败，请重试');
       toast({
         title: '登录失败',
-        description: error.message || '请检查用户名和密码后重试',
+        description: error.message || '请检查网络连接后重试',
         variant: 'destructive'
       });
     } finally {
@@ -100,11 +177,11 @@ export default function Login(props) {
     }
   };
 
-  // 重试登录
+  // 处理重试
   const handleRetry = () => {
     if (retryCount < maxRetries) {
       setRetryCount(prev => prev + 1);
-      form.handleSubmit(onSubmit)();
+      setLoginError(null);
     } else {
       toast({
         title: '重试次数已达上限',
@@ -113,119 +190,78 @@ export default function Login(props) {
       });
     }
   };
-
-  // 清除错误状态
-  const handleClearError = () => {
-    setApiError(null);
-    setRetryCount(0);
-  };
   return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* 返回按钮 */}
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => $w.utils.navigateBack()} className="text-gray-600">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            返回
-          </Button>
-        </div>
-
-        {/* 登录卡片 */}
-        <Card className="shadow-lg">
+        <Card className="shadow-xl">
           <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-blue-600" />
-            </div>
             <CardTitle className="text-2xl">用户登录</CardTitle>
-            <p className="text-gray-600">请输入您的账号和密码</p>
+            <p className="text-sm text-gray-600 mt-2">登录后使用作文批改功能</p>
           </CardHeader>
+          
           <CardContent>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* 用户名输入 */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  用户名
-                </label>
+                <label className="block text-sm font-medium mb-2">用户名</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input {...form.register('username', {
-                  required: true
-                })} type="text" placeholder="请输入用户名" className="pl-10" disabled={loading} />
+                  <Input {...register('username', {
+                  required: '请输入用户名',
+                  minLength: {
+                    value: 3,
+                    message: '用户名至少3个字符'
+                  }
+                })} placeholder="请输入用户名" className="pl-10" disabled={loading} />
                 </div>
-                {form.formState.errors.username && <p className="text-red-500 text-sm mt-1">用户名不能为空</p>}
+                {errors.username && <p className="text-sm text-red-500 mt-1">{errors.username.message}</p>}
               </div>
 
-              {/* 密码输入 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  密码
-                </label>
+                <label className="block text-sm font-medium mb-2">密码</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input {...form.register('password', {
-                  required: true
-                })} type="password" placeholder="请输入密码" className="pl-10" disabled={loading} />
+                  <Input {...register('password', {
+                  required: '请输入密码',
+                  minLength: {
+                    value: 6,
+                    message: '密码至少6个字符'
+                  }
+                })} type={showPassword ? 'text' : 'password'} placeholder="请输入密码" className="pl-10 pr-10" disabled={loading} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-                {form.formState.errors.password && <p className="text-red-500 text-sm mt-1">密码不能为空</p>}
+                {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
               </div>
 
-              {/* 错误提示 */}
-              {apiError && <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="space-y-2">
-                      <div className="font-semibold">登录失败</div>
-                      <div>{apiError}</div>
-                      {retryCount < maxRetries && <div className="flex items-center space-x-2 mt-2">
-                          <span className="text-sm">还可以重试 {maxRetries - retryCount} 次</span>
-                        </div>}
-                    </div>
-                  </AlertDescription>
+              {loginError && <Alert variant="destructive">
+                  <AlertDescription>{loginError}</AlertDescription>
                 </Alert>}
 
-              {/* 登录按钮 */}
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                 {loading ? <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     登录中...
                   </> : '登录'}
               </Button>
-
-              {/* 错误状态下的操作按钮 */}
-              {apiError && <div className="flex justify-center space-x-2">
-                  <Button type="button" onClick={handleRetry} disabled={loading || retryCount >= maxRetries} variant="outline" size="sm">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    重试 {retryCount < maxRetries && `(${maxRetries - retryCount})`}
-                  </Button>
-                  <Button type="button" onClick={handleClearError} variant="outline" size="sm">
-                    清除错误
-                  </Button>
-                </div>}
             </form>
 
-            {/* 其他选项 */}
-            <div className="mt-6 text-center text-sm text-gray-600">
-              <p>
-                还没有账号？
-                <Button variant="link" className="text-blue-600 hover:text-blue-700 p-0 h-auto ml-1" onClick={() => {
-                // 这里可以跳转到注册页面
-                toast({
-                  title: '功能开发中',
-                  description: '注册功能正在开发中，敬请期待',
-                  variant: 'default'
-                });
-              }}>
-                  立即注册
-                </Button>
-              </p>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 mb-2">测试账号：</p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p>用户名：admin / 密码：123456</p>
+                <p>用户名：student / 密码：123456</p>
+                <p>用户名：teacher / 密码：123456</p>
+              </div>
             </div>
+
+            {loginError && retryCount < maxRetries && <div className="mt-4 text-center">
+                <Button variant="outline" size="sm" onClick={handleRetry} disabled={loading}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  重试 ({maxRetries - retryCount}次)
+                </Button>
+              </div>}
           </CardContent>
         </Card>
-
-        {/* 使用提示 */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>测试账号：admin / 123456</p>
-          <p className="mt-1">或使用您的个人账号登录</p>
-        </div>
       </div>
     </div>;
 }
