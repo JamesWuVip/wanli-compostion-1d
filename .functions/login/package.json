@@ -2,14 +2,19 @@
 {
   "name": "login",
   "version": "1.0.0",
-  "description": "用户登录云函数",
+  "description": "用户登录认证云函数",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "wx-server-sdk": "latest"
+    "wx-server-sdk": "~2.6.3"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "作文批改系统",
+  "license": "MIT",
+  "cloudfunction-config": {
+    "timeout": 5,
+    "memorySize": 128,
+    "runtime": "Nodejs12.16"
+  }
 }
