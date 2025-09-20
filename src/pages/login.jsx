@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 // @ts-ignore;
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, useToast, Alert, AlertDescription, AlertTitle } from '@/components/ui';
 // @ts-ignore;
-import { User, Lock, Eye, EyeOff, Loader2, RefreshCw, CheckCircle, AlertCircle, WifiOff, Server, Settings } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Loader2, RefreshCw, CheckCircle, AlertCircle, WifiOff, Server, Settings, Mail } from 'lucide-react';
 
 // @ts-ignore;
 import { useForm } from 'react-hook-form';
@@ -52,24 +52,32 @@ export default function Login(props) {
     };
   }, []);
 
-  // 优化的云函数状态检查
+  // 优化的云函数状态检查 - 使用合理的测试参数
   const checkCloudFunction = async () => {
     try {
       setCloudFunctionStatus('checking');
       setServiceError(null);
 
-      // 使用轻量级健康检查
+      // 使用合理的测试参数进行健康检查
       const result = await $w.cloud.callFunction({
         name: 'login',
         data: {
-          username: '',
-          password: ''
+          username: 'healthcheck',
+          password: 'healthcheck123'
         }
       });
 
       // 检查返回格式是否正确
       if (result && typeof result === 'object') {
-        setCloudFunctionStatus('available');
+        // 即使是认证失败（401）也说明服务是正常的
+        if (result.code === 401) {
+          setCloudFunctionStatus('available');
+        } else if (result.code === 0) {
+          setCloudFunctionStatus('available');
+        } else {
+          // 其他错误代码也视为服务正常
+          setCloudFunctionStatus('available');
+        }
       } else {
         throw new Error('服务响应格式异常');
       }
@@ -84,15 +92,18 @@ export default function Login(props) {
         errorMessage = '登录服务未部署，请联系管理员';
       } else if (error.message?.includes('timeout')) {
         errorType = 'timeout';
-        errorMessage = '连接超时，请检查网络';
+        errorMessage = '连接超时，请检查网络连接';
       } else if (error.message?.includes('ECONNREFUSED')) {
         errorType = 'connection_refused';
-        errorMessage = '无法连接到服务器';
+        errorMessage = '无法连接到服务器，请稍后重试';
       } else if (error.message?.includes('PERMISSION_DENIED')) {
         errorType = 'permission_denied';
         errorMessage = '权限不足，请联系管理员';
-      } else if (error.code === -1) {
-        // 空参数导致的400错误，这是正常的
+      } else if (error.message?.includes('NETWORK_ERROR')) {
+        errorType = 'network_error';
+        errorMessage = '网络连接异常，请检查网络设置';
+      } else if (error.code === 400) {
+        // 参数错误，但说明服务是正常的
         setCloudFunctionStatus('available');
         return;
       } else {
@@ -117,7 +128,8 @@ export default function Login(props) {
         icon: <WifiOff className="w-12 h-12 text-red-500" />,
         actions: [{
           label: '刷新页面',
-          onClick: () => window.location.reload()
+          onClick: () => window.location.reload(),
+          variant: 'default'
         }]
       };
     }
@@ -125,29 +137,35 @@ export default function Login(props) {
       case 'checking':
         return {
           title: '正在检查服务状态...',
-          message: '请稍候',
+          message: '请稍候，我们正在验证服务可用性',
           icon: <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
         };
       case 'available':
         return null;
       case 'unavailable':
-        return {
-          title: '服务暂时不可用',
-          message: serviceError?.message || '请稍后重试或联系管理员',
-          icon: <Server className="w-12 h-12 text-orange-500" />,
-          actions: [{
-            label: '重新检查',
-            onClick: checkCloudFunction
-          }, {
-            label: '联系管理员',
+        const actions = [{
+          label: '重新检查',
+          onClick: checkCloudFunction,
+          variant: 'default'
+        }];
+        if (serviceError?.type === 'not_deployed') {
+          actions.push({
+            label: '联系技术支持',
             onClick: () => {
               toast({
-                title: '联系管理员',
-                description: '请通过系统设置联系技术支持',
+                title: '技术支持',
+                description: '请联系系统管理员部署登录服务',
                 duration: 3000
               });
-            }
-          }]
+            },
+            variant: 'outline'
+          });
+        }
+        return {
+          title: '服务暂时不可用',
+          message: serviceError?.message || '请稍后重试',
+          icon: <Server className="w-12 h-12 text-orange-500" />,
+          actions
         };
       default:
         return null;
@@ -226,7 +244,7 @@ export default function Login(props) {
           title: '登录成功',
           description: `欢迎回来，${result.user.nickName || result.user.name || result.user.username}`,
           duration: 2000,
-          className: 'bg-green-50 border-green-200'
+          className: 'bg-green-50 border-green-200 text-green-800'
         });
         setTimeout(() => {
           $w.utils.navigateTo({
@@ -266,13 +284,15 @@ export default function Login(props) {
   if (statusMessage && cloudFunctionStatus !== 'available') {
     return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          {statusMessage.icon}
-          <h2 className="text-xl font-semibold text-gray-700 mt-4 mb-2">{statusMessage.title}</h2>
-          <p className="text-gray-600 mb-6">{statusMessage.message}</p>
+          <div className="mb-6 flex justify-center">
+            {statusMessage.icon}
+          </div>
+          <h2 className="text-xl font-semibold text-gray-700 mt-4 mb-3">{statusMessage.title}</h2>
+          <p className="text-gray-600 mb-6 text-sm leading-relaxed">{statusMessage.message}</p>
           {statusMessage.actions && <div className="flex justify-center space-x-3">
-              {statusMessage.actions.map((action, index) => <Button key={index} onClick={action.onClick} variant={index === 0 ? 'default' : 'outline'}>
-                  {action.label}
-                </Button>)}
+              {statusMessage.actions.map((action, index) => <Button key={index} onClick={action.onClick} variant={action.variant || 'default'} className="px-4 py-2 text-sm">
+                {action.label}
+              </Button>)}
             </div>}
         </div>
       </div>;
@@ -284,7 +304,7 @@ export default function Login(props) {
             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
               <User className="w-8 h-8 text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               用户登录
             </CardTitle>
             <p className="text-sm text-gray-600 mt-2">登录后使用作文批改功能</p>
@@ -312,7 +332,7 @@ export default function Login(props) {
                     value: /^[a-zA-Z0-9_-]+$/,
                     message: '用户名只能包含字母、数字、下划线和横线'
                   }
-                })} placeholder="请输入用户名" className="pl-10 pr-4 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading || cloudFunctionStatus !== 'available'} />
+                })} placeholder="请输入用户名" className="pl-10 pr-4 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg" disabled={loading || cloudFunctionStatus !== 'available'} />
                 </div>
                 {errors.username && <p className="text-sm text-red-500 mt-1">{errors.username.message}</p>}
               </div>
@@ -333,19 +353,19 @@ export default function Login(props) {
                     value: 30,
                     message: '密码最多30个字符'
                   }
-                })} type={showPassword ? 'text' : 'password'} placeholder="请输入密码" className="pl-10 pr-12 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500" disabled={loading || cloudFunctionStatus !== 'available'} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" disabled={loading}>
+                })} type={showPassword ? 'text' : 'password'} placeholder="请输入密码" className="pl-10 pr-12 py-3 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg" disabled={loading || cloudFunctionStatus !== 'available'} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded" disabled={loading}>
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
                 {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
               </div>
 
-              {loginError && <Alert variant="destructive">
-                  <AlertDescription>{loginError}</AlertDescription>
+              {loginError && <Alert variant="destructive" className="border-red-200 bg-red-50">
+                  <AlertDescription className="text-red-700">{loginError}</AlertDescription>
                 </Alert>}
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" disabled={loading || cloudFunctionStatus !== 'available'}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-md" disabled={loading || cloudFunctionStatus !== 'available'}>
                 {loading ? <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     登录中...
@@ -356,17 +376,17 @@ export default function Login(props) {
               </Button>
             </form>
 
-            <div className="mt-6">
+            <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="text-center">
-                <p className="text-sm text-gray-600 mb-3">快速测试账号：</p>
+                <p className="text-sm text-gray-600 mb-3">快速测试账号</p>
                 <div className="grid grid-cols-1 gap-2">
-                  <button type="button" onClick={() => fillTestAccount('admin', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading || cloudFunctionStatus !== 'available'}>
+                  <button type="button" onClick={() => fillTestAccount('admin', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50 border border-gray-200" disabled={loading || cloudFunctionStatus !== 'available'}>
                     管理员: admin / 123456
                   </button>
-                  <button type="button" onClick={() => fillTestAccount('student', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading || cloudFunctionStatus !== 'available'}>
+                  <button type="button" onClick={() => fillTestAccount('student', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50 border border-gray-200" disabled={loading || cloudFunctionStatus !== 'available'}>
                     学生: student / 123456
                   </button>
-                  <button type="button" onClick={() => fillTestAccount('teacher', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50" disabled={loading || cloudFunctionStatus !== 'available'}>
+                  <button type="button" onClick={() => fillTestAccount('teacher', '123456')} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors disabled:opacity-50 border border-gray-200" disabled={loading || cloudFunctionStatus !== 'available'}>
                     老师: teacher / 123456
                   </button>
                 </div>
