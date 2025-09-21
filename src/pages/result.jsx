@@ -197,7 +197,7 @@ export default function Result(props) {
               继续批改新作文
             </Button>
           </div>
-        </div>
+          </div>
       </div>
     </div>;
 }
