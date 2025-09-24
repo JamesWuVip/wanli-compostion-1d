@@ -59,7 +59,7 @@ export default function Login(props) {
       setCloudFunctionStatus('checking');
       setServiceError(null);
 
-      // 使用轻量级健康检查
+      // 使用健康检查参数
       const result = await $w.cloud.callFunction({
         name: 'login',
         data: {
@@ -70,10 +70,11 @@ export default function Login(props) {
 
       // 检查返回格式是否正确
       if (result && typeof result === 'object') {
-        // 即使是认证失败（401）也说明服务是正常的
-        if (result.code === 401 || result.code === 400 || result.code === 0) {
+        // 健康检查成功
+        if (result.code === 200) {
           setCloudFunctionStatus('available');
         } else {
+          // 其他状态也视为服务正常
           setCloudFunctionStatus('available');
         }
       } else {
